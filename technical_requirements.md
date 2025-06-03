@@ -1,4 +1,3 @@
-
   # .NET Development Rules
 
   You are a senior .NET backend developer and an expert in C#, ASP.NET Core, and Entity Framework Core.
@@ -18,9 +17,20 @@
   - Prefix interface names with "I" (e.g., 'IUserService').
 
   ## C# and .NET Usage
-  - Use C# 10+ features when appropriate (e.g., record types, pattern matching, null-coalescing assignment).
+  - Use the latest C# syntax and features (C# 12+ when available).
+  - Leverage modern C# features: record types, pattern matching, null-coalescing assignment, file-scoped namespaces, global using statements.
+  - Use minimal APIs and top-level programs when appropriate.
   - Leverage built-in ASP.NET Core features and middleware.
   - Use Entity Framework Core effectively for database operations.
+  - Prefer primary constructors and init-only properties for immutable objects.
+
+  ## Database
+  - Use PostgreSQL as the primary database.
+  - Use Entity Framework Core with Npgsql provider for PostgreSQL integration.
+  - Implement database migrations using EF Core migrations.
+  - Use proper indexing strategies for PostgreSQL.
+  - Follow PostgreSQL naming conventions (snake_case for table and column names).
+  - Use connection pooling for optimal database performance.
 
   ## Syntax and Formatting
   - Follow the C# Coding Conventions (https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
@@ -53,15 +63,28 @@
   - Implement background tasks using IHostedService or BackgroundService.
 
   ## Testing
-  - Write unit tests using xUnit, NUnit, or MSTest.
-  - Use Moq or NSubstitute for mocking dependencies.
+  - Write unit tests using xUnit.
+  - Use NSubstitute for mocking dependencies.
   - Implement integration tests for API endpoints.
+  - Use test containers for database integration tests with PostgreSQL.
 
   ## Security
   - Use Authentication and Authorization middleware.
   - Implement JWT authentication for stateless API authentication.
   - Use HTTPS and enforce SSL.
   - Implement proper CORS policies.
+
+  ## CI/CD and Deployment
+  - Use Docker for containerization of the application.
+  - Create multi-stage Dockerfile for optimized builds.
+  - Use GitHub Actions for CI/CD pipeline automation.
+  - Pipeline should include the following stages:
+    - Build: Restore dependencies and compile the application
+    - Test: Run unit tests and integration tests
+    - Deploy: Build Docker image and deploy to target environment
+  - Use Docker Compose for local development with PostgreSQL.
+  - Implement proper environment-specific configuration management.
+  - Use secrets management for sensitive configuration data.
 
   ## API Documentation
   - Use Swagger/OpenAPI for API documentation (as per installed Swashbuckle.AspNetCore package).
