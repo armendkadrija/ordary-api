@@ -234,6 +234,24 @@ public class ValidationException(List<ValidationFailure> errors) : Exception
 - Use the in-memory database for service testing
 - Integration tests available with Testcontainers
 
+## Module Naming Guidelines
+
+When creating a new module, always follow this process:
+
+### **Module Naming Approval Process**
+1. **Suggest 3 potential names** for the module based on its primary purpose
+2. **Present options** to the user for approval, following these conventions:
+   - Use **singular form** (User, Auth, Tenant, not Users, Authentication, MultiTenancy)
+   - Use **clear, descriptive names** that reflect the main entity or concept
+   - Keep names **concise** and **professional**
+3. **Wait for user approval** before proceeding with implementation
+4. **Apply the chosen name consistently** across all files and documentation
+
+### **Existing Module Examples**
+- `Auth` - Authentication and authorization
+- `User` - User management and profiles  
+- `Tenant` - Multi-tenancy and clinic management
+
 ## Step-by-Step Guide for Adding New Routes
 
 When adding a new endpoint to an existing module, follow these steps in order:
