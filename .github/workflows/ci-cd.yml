@@ -61,7 +61,7 @@ jobs:
       run: dotnet build --no-restore --configuration Release
 
     - name: Run unit tests
-      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
       env:
         ConnectionStrings__DefaultConnection: "Host=localhost;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
 
