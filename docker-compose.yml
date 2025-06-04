@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=odary_dev;Username=postgres;Password=postgres;Port=5432
+      - JwtSettings__SecretKey=your-super-secret-key-that-should-be-at-least-32-characters-long-for-security
+      - JwtSettings__Issuer=Odary.Api
+      - JwtSettings__Audience=Odary.Api.Users
+      - JwtSettings__ExpiryHours=24
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src/Odary.Api:/app/src
+    networks:
+      - odary-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=odary_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - odary-network
+
+volumes:
+  postgres_data:
+
+networks:
+  odary-network:
+    driver: bridge 
