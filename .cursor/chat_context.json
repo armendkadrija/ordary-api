@@ -1,0 +1,8 @@
+{
+  "defaultFiles": [
+    "specs/specifications/dental_practice_spec.md",
+    "specs/specifications/modules/",
+    "technical_requirements.md"
+  ],
+  "description": "Automatically include specification files and detailed module requirements in chat context"
+} 

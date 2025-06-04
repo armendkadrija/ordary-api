@@ -1,0 +1,28 @@
+# Odary API Development Rules
+
+## Key Reference Files
+Always reference these files when working on the project:
+- `specs/specifications/dental_practice_spec.md` - Complete dental practice software specification
+- `specs/specifications/modules/` - Detailed functional user stories and requirements for each module
+- `technical_requirements.md` - .NET development guide and architecture patterns
+
+## Module-Specific Development
+When working on a specific module, ALWAYS reference the corresponding detailed specification:
+- Multi-tenancy: `specs/specifications/modules/01_multi_tenancy.md`
+- Security & Access: `specs/specifications/modules/02_security_and_access.md`
+- Patient Management: `specs/specifications/modules/03_patient_management.md`
+- Inventory Management: `specs/specifications/modules/04_inventory_management.md`
+- Appointment Scheduling: `specs/specifications/modules/05_appointment_scheduling.md`
+- Treatment Plans: `specs/specifications/modules/06_treatment_plans.md`
+- Dental Charting: `specs/specifications/modules/07_dental_charting.md`
+- Files Management: `specs/specifications/modules/08_files_management.md`
+- Billing & Payments: `specs/specifications/modules/09_billing_and_payments.md`
+- Reporting: `specs/specifications/modules/10_reporting.md`
+
+## Development Guidelines
+- Follow the modular architecture pattern defined in technical_requirements.md
+- Implement modules in the order specified in dental_practice_spec.md
+- Use the detailed user stories in the modules folder as the primary source for functional requirements
+- Validate all field requirements, business rules, and UX instructions from the module specifications
+- Use the established patterns for contracts, services, and validation
+- Maintain primary constructor usage throughout the codebase 
