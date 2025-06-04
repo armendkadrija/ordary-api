@@ -1,33 +1,42 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odary.Api.Domain;
 
-public class User
+public class User : BaseEntity
 {
-    public string Id { get; private set; } = string.Empty;
-    public string Email { get; private set; } = string.Empty;
-    public string PasswordHash { get; private set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; private set; }
-    public DateTimeOffset? UpdatedAt { get; private set; }
+    [MaxLength(50)]
+    public string TenantId { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string Email { get; set; } = string.Empty;
+    
+    [MaxLength(500)]
+    public string PasswordHash { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string FirstName { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string LastName { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string Role { get; set; } = string.Empty;
+    
+    public bool IsActive { get; set; }
+
+    // Navigation property
+    public virtual Tenant Tenant { get; private set; } = null!;
 
     // Parameterless constructor for EF Core
     private User() { }
 
-    public User(string email, string passwordHash)
+    public User(string tenantId, string email, string passwordHash, string firstName, string lastName, string role)
     {
-        Id = Guid.NewGuid().ToString();
+        TenantId = tenantId;
         Email = email;
         PasswordHash = passwordHash;
-        CreatedAt = DateTimeOffset.UtcNow;
-    }
-
-    public void UpdateEmail(string email)
-    {
-        Email = email;
-        UpdatedAt = DateTimeOffset.UtcNow;
-    }
-
-    public void UpdatePassword(string passwordHash)
-    {
-        PasswordHash = passwordHash;
-        UpdatedAt = DateTimeOffset.UtcNow;
+        FirstName = firstName;
+        LastName = lastName;
+        Role = role;
     }
 } 

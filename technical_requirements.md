@@ -22,6 +22,122 @@ You are working with an existing .NET 9 boilerplate API that follows clean archi
 - **Use primary constructors** - Prefer primary constructors over traditional constructors for cleaner, more concise code
 - **Use modern C# features** - Leverage record types, pattern matching, null-coalescing assignment, file-scoped namespaces, and init-only properties
 
+## Domain Model Patterns
+
+### Clean Domain Models
+Domain models should be **pure data structures** without business logic methods:
+
+```csharp
+public class User : BaseEntity
+{
+    [MaxLength(255)]
+    public string Email { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string FirstName { get; set; } = string.Empty;
+    
+    [MaxLength(255)]
+    public string LastName { get; set; } = string.Empty;
+    
+    public bool IsActive { get; set; }
+
+    // Navigation properties
+    public virtual Tenant Tenant { get; private set; } = null!;
+
+    // Minimal constructor for entity creation
+    public User(string tenantId, string email, string passwordHash, string firstName, string lastName, string role)
+    {
+        TenantId = tenantId;
+        Email = email;
+        PasswordHash = passwordHash;
+        FirstName = firstName;
+        LastName = lastName;
+        Role = role;
+    }
+}
+```
+
+**Key Principles:**
+- **No business logic methods** - Remove methods like `UpdateEmail()`, `Activate()`, `Deactivate()`
+- **Direct property assignment** - Services set properties directly: `user.IsActive = true`
+- **Service-level business logic** - All business rules and defaults handled in service layer
+- **Automatic timestamps** - Handled by `BaseEntity` and EF Core's `SaveChanges()` override
+
+### Base Entity Pattern
+All entities inherit from `BaseEntity` for automatic ID generation and timestamp management:
+
+```csharp
+public abstract class BaseEntity
+{
+    [Key]
+    [MaxLength(50)]
+    public string Id { get; protected set; } = string.Empty;
+    
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+
+    protected BaseEntity()
+    {
+        Id = Guid.NewGuid().ToString("N"); // Clean 32-character hex string
+    }
+}
+```
+
+### Automatic Timestamp Management
+EF Core's `DbContext` handles timestamps automatically without domain model intervention:
+
+```csharp
+public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+{
+    UpdateTimestamps();
+    return await base.SaveChangesAsync(cancellationToken);
+}
+
+private void UpdateTimestamps()
+{
+    var entries = ChangeTracker.Entries<BaseEntity>();
+    foreach (var entry in entries)
+    {
+        switch (entry.State)
+        {
+            case EntityState.Added:
+                entry.Entity.CreatedAt = DateTimeOffset.UtcNow;
+                break;
+            case EntityState.Modified:
+                entry.Entity.UpdatedAt = DateTimeOffset.UtcNow;
+                break;
+        }
+    }
+}
+```
+
+### Service-Level Business Logic
+All business rules, defaults, and validations are handled in services:
+
+```csharp
+public async Task<UserResources.V1.User> CreateUserAsync(UserCommands.V1.CreateUser command, CancellationToken cancellationToken = default)
+{
+    await validationService.ValidateAsync(command, cancellationToken);
+
+    // Create user with required data
+    var user = new Domain.User(
+        tempTenantId, 
+        command.Email, 
+        passwordHash,
+        command.Email.Split('@')[0], // Business logic: default first name
+        "",                         // Business logic: default empty last name
+        "User"                      // Business logic: default role
+    );
+    
+    // Apply business logic - set default active state
+    user.IsActive = true;
+    
+    dbContext.Users.Add(user);
+    await dbContext.SaveChangesAsync(cancellationToken);
+    
+    return user.ToContract();
+}
+
 ## Modular Architecture Pattern
 The project follows a modular architecture where each business domain is organized as a self-contained module:
 
@@ -216,6 +332,12 @@ public class ValidationException(List<ValidationFailure> errors) : Exception
 - Snake_case naming convention for tables and columns (auto-configured)
 - Connection pooling enabled
 - Migrations using EF Core
+
+### ID Format Standards
+- **All entity IDs must be string type** with `[MaxLength(50)]` attribute
+- **Generate IDs using** `Guid.NewGuid().ToString("N")` - creates clean 32-character hexadecimal strings without hyphens
+- **Example ID format**: `"c4c7b3e8f8b44e4aabc1234567890abc"` (32 characters, no dashes)
+- **Benefits**: Globally unique, database-friendly, URL-safe, shorter than full GUID strings
 
 ## Authentication (Already Implemented)
 - JWT authentication with proper middleware setup

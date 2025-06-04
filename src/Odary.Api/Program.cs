@@ -61,7 +61,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add database context
 builder.Services.AddDbContext<OdaryDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .UseSnakeCaseNamingConvention());
 
 // Add JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

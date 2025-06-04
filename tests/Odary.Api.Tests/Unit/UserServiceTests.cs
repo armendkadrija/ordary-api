@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Odary.Api.Common.Database;
@@ -6,10 +7,11 @@ using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Validation;
 using Odary.Api.Domain;
 using Odary.Api.Modules.User;
+using Xunit;
 
 namespace Odary.Api.Tests.Unit;
 
-public class UserServiceTests
+public class UserServiceTests : IDisposable
 {
     private readonly IValidationService _validationService;
     private readonly OdaryDbContext _dbContext;
@@ -24,6 +26,7 @@ public class UserServiceTests
         // Setup in-memory database
         var options = new DbContextOptionsBuilder<OdaryDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _dbContext = new OdaryDbContext(options);
         
@@ -57,7 +60,8 @@ public class UserServiceTests
     public async Task CreateUserAsync_WithExistingEmail_ShouldThrowBusinessException()
     {
         // Arrange
-        var existingUser = new User("test@example.com", "hashedpassword");
+        var existingUser = new User("temp-tenant-id", "test@example.com", "hashedpassword", "Test", "User", "User");
+        existingUser.IsActive = true; // Set default active state
         _dbContext.Users.Add(existingUser);
         await _dbContext.SaveChangesAsync();
         
@@ -74,7 +78,8 @@ public class UserServiceTests
     public async Task GetUserAsync_WithValidId_ShouldReturnUser()
     {
         // Arrange
-        var user = new User("test@example.com", "hashedpassword");
+        var user = new User("temp-tenant-id", "test@example.com", "hashedpassword", "Test", "User", "User");
+        user.IsActive = true; // Set default active state
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
         

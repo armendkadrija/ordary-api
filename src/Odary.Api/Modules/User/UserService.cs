@@ -35,7 +35,23 @@ public class UserService(
         // Hash password (simplified - in production use proper password hashing)
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(command.Password);
 
-        var user = new Domain.User(command.Email, passwordHash);
+        // For now, create users without tenant constraint - this will be updated when auth is integrated with multi-tenancy
+        // TODO: Extract tenantId from authenticated user context
+        var tempTenantId = Guid.NewGuid().ToString("N"); // Temporary solution - in production get from auth context
+        
+        // Create user with minimum required data
+        var user = new Domain.User(
+            tempTenantId, 
+            command.Email, 
+            passwordHash,
+            command.Email.Split('@')[0], // Default first name from email prefix
+            "",                         // Default empty last name
+            "User"                      // Default role
+        );
+        
+        // Apply business logic - set default active state
+        user.IsActive = true;
+        
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -103,7 +119,7 @@ public class UserService(
         if (existingUser != null)
             throw new BusinessException("Email is already taken by another user");
 
-        user.UpdateEmail(command.Email);
+        user.Email = command.Email;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("User updated successfully with ID: {UserId}", user.Id);

@@ -12,6 +12,10 @@ public class UserQueries
             {
                 public string Id { get; init; } = string.Empty;
                 public string Email { get; init; } = string.Empty;
+                public string FirstName { get; init; } = string.Empty;
+                public string LastName { get; init; } = string.Empty;
+                public string Role { get; init; } = string.Empty;
+                public bool IsActive { get; init; }
                 public DateTimeOffset CreatedAt { get; init; }
                 public DateTimeOffset? UpdatedAt { get; init; }
             }
@@ -45,6 +49,10 @@ public class UserResources
         {
             public string Id { get; init; } = string.Empty;
             public string Email { get; init; } = string.Empty;
+            public string FirstName { get; init; } = string.Empty;
+            public string LastName { get; init; } = string.Empty;
+            public string Role { get; init; } = string.Empty;
+            public bool IsActive { get; init; }
             public DateTimeOffset CreatedAt { get; init; }
             public DateTimeOffset? UpdatedAt { get; init; }
         }
