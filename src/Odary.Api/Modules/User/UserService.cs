@@ -14,30 +14,19 @@ public interface IUserService
     Task DeleteUserAsync(UserCommands.V1.DeleteUser command, CancellationToken cancellationToken = default);
 }
 
-public class UserService : IUserService
+public class UserService(
+    IValidationService validationService,
+    OdaryDbContext dbContext,
+    ILogger<UserService> logger) : IUserService
 {
-    private readonly IValidationService _validationService;
-    private readonly OdaryDbContext _dbContext;
-    private readonly ILogger<UserService> _logger;
-
-    public UserService(
-        IValidationService validationService,
-        OdaryDbContext dbContext,
-        ILogger<UserService> logger)
-    {
-        _validationService = validationService;
-        _dbContext = dbContext;
-        _logger = logger;
-    }
-
     public async Task<UserResources.V1.User> CreateUserAsync(
         UserCommands.V1.CreateUser command, 
         CancellationToken cancellationToken = default)
     {
-        await _validationService.ValidateAsync(command, cancellationToken);
+        await validationService.ValidateAsync(command, cancellationToken);
 
         // Check if user already exists
-        var existingUser = await _dbContext.Users
+        var existingUser = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
         
         if (existingUser != null)
@@ -47,10 +36,10 @@ public class UserService : IUserService
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(command.Password);
 
         var user = new Domain.User(command.Email, passwordHash);
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("User created successfully with ID: {UserId}", user.Id);
+        logger.LogInformation("User created successfully with ID: {UserId}", user.Id);
         return user.ToContract();
     }
 
@@ -58,7 +47,7 @@ public class UserService : IUserService
         UserQueries.V1.GetUser query, 
         CancellationToken cancellationToken = default)
     {
-        var user = await _dbContext.Users
+        var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == query.Id, cancellationToken);
 
         if (user == null)
@@ -71,7 +60,7 @@ public class UserService : IUserService
         UserQueries.V1.GetUsers query, 
         CancellationToken cancellationToken = default)
     {
-        var usersQuery = _dbContext.Users.AsQueryable();
+        var usersQuery = dbContext.Users.AsQueryable();
 
         // Apply filters
         if (!string.IsNullOrEmpty(query.Email))
@@ -99,25 +88,25 @@ public class UserService : IUserService
         UserCommands.V1.UpdateUser command, 
         CancellationToken cancellationToken = default)
     {
-        await _validationService.ValidateAsync(command, cancellationToken);
+        await validationService.ValidateAsync(command, cancellationToken);
 
-        var user = await _dbContext.Users
+        var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == command.Id, cancellationToken);
 
         if (user == null)
             throw new NotFoundException($"User with ID {command.Id} not found");
 
         // Check if email is already taken by another user
-        var existingUser = await _dbContext.Users
+        var existingUser = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == command.Email && u.Id != command.Id, cancellationToken);
         
         if (existingUser != null)
             throw new BusinessException("Email is already taken by another user");
 
         user.UpdateEmail(command.Email);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("User updated successfully with ID: {UserId}", user.Id);
+        logger.LogInformation("User updated successfully with ID: {UserId}", user.Id);
         return user.ToContract();
     }
 
@@ -125,15 +114,15 @@ public class UserService : IUserService
         UserCommands.V1.DeleteUser command, 
         CancellationToken cancellationToken = default)
     {
-        var user = await _dbContext.Users
+        var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == command.Id, cancellationToken);
 
         if (user == null)
             throw new NotFoundException($"User with ID {command.Id} not found");
 
-        _dbContext.Users.Remove(user);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("User deleted successfully with ID: {UserId}", user.Id);
+        logger.LogInformation("User deleted successfully with ID: {UserId}", user.Id);
     }
 } 

@@ -14,40 +14,27 @@ public interface IAuthService
     Task<AuthResources.V1.TokenResponse> SignInAsync(AuthCommands.V1.SignIn command, CancellationToken cancellationToken = default);
 }
 
-public class AuthService : IAuthService
+public class AuthService(
+    IValidationService validationService,
+    OdaryDbContext dbContext,
+    IConfiguration configuration,
+    ILogger<AuthService> logger) : IAuthService
 {
-    private readonly IValidationService _validationService;
-    private readonly OdaryDbContext _dbContext;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AuthService> _logger;
-
-    public AuthService(
-        IValidationService validationService,
-        OdaryDbContext dbContext,
-        IConfiguration configuration,
-        ILogger<AuthService> logger)
-    {
-        _validationService = validationService;
-        _dbContext = dbContext;
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public async Task<AuthResources.V1.TokenResponse> SignInAsync(
         AuthCommands.V1.SignIn command,
         CancellationToken cancellationToken = default)
     {
-        await _validationService.ValidateAsync(command, cancellationToken);
+        await validationService.ValidateAsync(command, cancellationToken);
 
         // Find user by email
-        var user = await _dbContext.Users
+        var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(command.Password, user.PasswordHash))
             throw new BusinessException("Invalid email or password");
 
         // Generate JWT token
-        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var jwtSettings = configuration.GetSection("JwtSettings");
         var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is required"));
         var expiresAt = DateTime.UtcNow.AddHours(int.Parse(jwtSettings["ExpiryHours"] ?? "24"));
 
@@ -72,7 +59,7 @@ public class AuthService : IAuthService
         // For now, using the same token as refresh token (in production, implement proper refresh token logic)
         var refreshToken = Guid.NewGuid().ToString();
 
-        _logger.LogInformation("User signed in successfully: {Email}", user.Email);
+        logger.LogInformation("User signed in successfully: {Email}", user.Email);
 
         return new AuthResources.V1.TokenResponse
         {

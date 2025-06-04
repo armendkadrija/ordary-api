@@ -1,6 +1,16 @@
-# .NET Development Rules
+# .NET Development Guide - Odary API
 
-You are a senior .NET backend developer and an expert in C#, ASP.NET Core, and Entity Framework Core.
+You are working with an existing .NET 9 boilerplate API that follows clean architecture principles with a modular design.
+
+## Tech Stack (Already Implemented)
+- ✅ .NET 9 with Minimal APIs
+- ✅ Entity Framework Core with PostgreSQL
+- ✅ JWT Authentication
+- ✅ FluentValidation with generic ValidationService
+- ✅ Swagger/OpenAPI documentation
+- ✅ Docker & Docker Compose
+- ✅ xUnit testing with NSubstitute
+- ✅ GitHub Actions CI/CD
 
 ## Code Style and Structure
 - Write concise, idiomatic C# code with accurate examples.
@@ -8,16 +18,12 @@ You are a senior .NET backend developer and an expert in C#, ASP.NET Core, and E
 - Use object-oriented and functional programming patterns as appropriate.
 - Prefer LINQ and lambda expressions for collection operations.
 - Use descriptive variable and method names (e.g., 'IsUserSignedIn', 'CalculateTotal').
-- Structure files according to .NET conventions (Controllers, Models, Services, etc.).
-
-## Project Structure
-- API project should be placed under `src/` folder.
-- Test projects should be placed under `tests/` folder.
-- Follow clean architecture principles with proper separation of concerns.
-- **Use modular architecture pattern** - see Modular Architecture section below.
+- Follow the established modular architecture pattern.
+- **Use primary constructors** - Prefer primary constructors over traditional constructors for cleaner, more concise code
+- **Use modern C# features** - Leverage record types, pattern matching, null-coalescing assignment, file-scoped namespaces, and init-only properties
 
 ## Modular Architecture Pattern
-The project MUST follow a modular architecture where each business domain (User, Auth, Device, etc.) is organized as a self-contained module:
+The project follows a modular architecture where each business domain is organized as a self-contained module:
 
 ### Module Structure
 Each module should be organized under `src/Odary.Api/Modules/{ModuleName}/` with:
@@ -114,16 +120,16 @@ public static class UserModuleRegistration
 {
     public static IServiceCollection AddUserModule(this IServiceCollection services)
     {
-        // Register validation service (can be singleton - shared across modules)
+        // Register validation service (shared across modules)
         services.AddSingleton<IValidationService, ValidationService>();
-        
+
         // Register validators
         services.AddScoped<IValidator<UserCommands.V1.CreateUser>, CreateUserValidator>();
         services.AddScoped<IValidator<UserCommands.V1.UpdateUser>, UpdateUserValidator>();
-        
+
         // Register services
         services.AddScoped<IUserService, UserService>();
-        
+
         return services;
     }
 
@@ -138,7 +144,7 @@ public static class UserModuleRegistration
 
 ### Contract Design Rules
 - **No validation logic in contracts** - Contracts are pure data structures
-- **Service-level validation** - Validation performed explicitly in service methods using FluentValidation
+- **Service-level validation** - Validation performed using the existing ValidationService
 - **No DTOs needed** - Services map directly from domain models to contracts using mapping extensions
 - **Versioned structure** - All contracts organized under V1, V2, etc. nested classes for API versioning
 - **Separation of concerns** - Queries, Commands, and Resources are in separate classes within the contracts file
@@ -175,37 +181,24 @@ src/Odary.Api/Modules/
 - Use UPPERCASE for constants.
 - Prefix interface names with "I" (e.g., 'IUserService').
 
-## C# and .NET Usage
-- Use the latest C# syntax and features (C# 12+ when available).
-- Leverage modern C# features: record types, pattern matching, null-coalescing assignment, file-scoped namespaces, global using statements.
-- Use minimal APIs and top-level programs when appropriate.
-- Leverage built-in ASP.NET Core features and middleware.
-- Use Entity Framework Core effectively for database operations.
-- Prefer primary constructors and init-only properties for immutable objects.
+## Validation Pattern (Already Implemented)
+The project uses a generic ValidationService that automatically finds validators:
 
-## Database
-- Use PostgreSQL as the primary database.
-- Use Entity Framework Core with Npgsql provider for PostgreSQL integration.
-- Implement database migrations using EF Core migrations.
-- Use proper indexing strategies for PostgreSQL.
-- Follow PostgreSQL naming conventions (snake_case for table and column names).
-- Use connection pooling for optimal database performance.
+```csharp
+// In your service methods, use the existing ValidationService
+public async Task<UserResources.V1.User> CreateUserAsync(UserCommands.V1.CreateUser command, CancellationToken token)
+{
+    await _validationService.ValidateAsync(command, token);
+    
+    // Business logic continues...
+}
+```
 
-## Syntax and Formatting
-- Follow the C# Coding Conventions (https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
-- Use C#'s expressive syntax (e.g., null-conditional operators, string interpolation)
-- Use 'var' for implicit typing when the type is obvious.
-
-## Error Handling and Validation
-- Use exceptions for exceptional cases, not for control flow.
-- Implement proper error logging using built-in .NET logging or a third-party logger.
-- **Service-level validation**: Use generic ValidationService to automatically find and execute validators based on request type
-- Use custom ValidationException for consistent validation error handling
-- Validation exception pattern:
+### ValidationException Pattern
 ```csharp
 public class ValidationException(List<ValidationFailure> errors) : Exception
 {
-    List<ValidationFailure> Errors { get; } = errors;
+    public List<ValidationFailure> Errors { get; } = errors;
 
     public object GetValidationErrors()
         => Errors.Select(
@@ -217,136 +210,29 @@ public class ValidationException(List<ValidationFailure> errors) : Exception
             .ToList();
 }
 ```
-- Generic validation service pattern:
-```csharp
-public interface IValidationService
-{
-    Task ValidateAsync<T>(T request, CancellationToken cancellationToken = default);
-}
 
-public class ValidationService : IValidationService
-{
-    private readonly IServiceProvider _serviceProvider;
-    
-    public ValidationService(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-    
-    public async Task ValidateAsync<T>(T request, CancellationToken cancellationToken = default)
-    {
-        var validator = _serviceProvider.GetService<IValidator<T>>();
-        if (validator == null) return; // No validator registered, skip validation
-        
-        var result = await validator.ValidateAsync(request, cancellationToken);
-        if (!result.IsValid) throw new ValidationException(result.Errors);
-    }
-}
-```
-- Service validation usage pattern:
-```csharp
-public class UserService : IUserService
-{
-    private readonly IValidationService _validationService;
-    private readonly IUserRepository _userRepository;
-    
-    public UserService(IValidationService validationService, IUserRepository userRepository)
-    {
-        _validationService = validationService;
-        _userRepository = userRepository;
-    }
+## Database Conventions (Already Configured)
+- PostgreSQL database with EF Core
+- Snake_case naming convention for tables and columns (auto-configured)
+- Connection pooling enabled
+- Migrations using EF Core
 
-    public async Task<UserResources.V1.User> CreateUserAsync(UserCommands.V1.CreateUser command, CancellationToken token)
-    {
-        await _validationService.ValidateAsync(command, token);
-        
-        // Business logic continues...
-        var user = new Domain.User(command.Email, command.Password);
-        await _userRepository.AddAsync(user, token);
-        return user.ToContract();
-    }
-}
-```
-- Implement global exception handling middleware to catch ValidationException and return appropriate responses.
-- Return appropriate HTTP status codes and consistent error responses.
+## Authentication (Already Implemented)
+- JWT authentication with proper middleware setup
+- Token generation in AuthService
+- Authorization attributes available for endpoints
 
-## API Design
-- Follow RESTful API design principles.
-- Use attribute routing in controllers.
-- Implement versioning for your API.
-- Use action filters for cross-cutting concerns.
-
-## Performance Optimization
+## Performance & Best Practices
 - Use asynchronous programming with async/await for I/O-bound operations.
-- Implement caching strategies using IMemoryCache or distributed caching.
+- Use the existing pagination classes: `PaginatedRequest` and `PaginatedResponse<T>`
 - Use efficient LINQ queries and avoid N+1 query problems.
-- Implement pagination for large data sets.
+- Follow the existing exception handling patterns.
 
-## Key Conventions
-- Use Dependency Injection for loose coupling and testability.
-- Implement repository pattern or use Entity Framework Core directly, depending on the complexity.
-- Use manual mapping with extension methods in {ModuleName}Mappings.cs files (no AutoMapper dependency).
-- Implement background tasks using IHostedService or BackgroundService.
-
-## Testing
-- Write unit tests using xUnit.
-- Use NSubstitute for mocking dependencies.
-- Implement integration tests for API endpoints.
-- Use test containers for database integration tests with PostgreSQL.
-
-## Security
-- Use Authentication and Authorization middleware.
-- Implement JWT authentication for stateless API authentication.
-- Use HTTPS and enforce SSL.
-- Implement proper CORS policies.
-
-## CI/CD and Deployment
-- Use Docker for containerization of the application.
-- Create multi-stage Dockerfile for optimized builds.
-- Use GitHub Actions for CI/CD pipeline automation.
-- Pipeline should include the following stages:
-  - Build: Restore dependencies and compile the application
-  - Test: Run unit tests and integration tests
-  - Deploy: Build Docker image and deploy to target environment
-- Use Docker Compose for local development with PostgreSQL.
-- Implement proper environment-specific configuration management.
-- Use secrets management for sensitive configuration data.
-
-## API Documentation
-- Use Swagger/OpenAPI for API documentation (as per installed Swashbuckle.AspNetCore package).
-- Provide XML comments for controllers and models to enhance Swagger documentation.
-
-Follow the official Microsoft documentation and ASP.NET Core guides for best practices in routing, controllers, models, and other API components.
-
-## Explicit Requirements - MUST FOLLOW EXACTLY
-
-### Required Technologies (ONLY THESE):
-- .NET 9 (latest)
-- Minimal APIs (NOT Controllers)
-- Entity Framework Core
-- PostgreSQL with Npgsql
-- JWT Authentication
-- Swagger/OpenAPI
-- xUnit for testing
-- Docker & Docker Compose
-- GitHub Actions CI/CD
-
-### Architecture Constraints:
-- Use Minimal APIs with endpoint mapping
-- No controller classes
-- Keep dependencies minimal and only use what's explicitly requested
-
-## Implementation Rules
-- Only implement features and packages explicitly mentioned in requirements
-- **For any additional packages/features:** ASK FIRST and EXPLAIN WHY it would be beneficial
-- Ask for clarification if requirements are unclear
-- Prefer simpler solutions over feature-rich ones when not specified
-- Follow the EXACT technology stack specified
-
-### Examples of when to ask:
-- "Should I add FluentValidation for request validation? It provides more flexible validation than Data Annotations but is an additional package."
-- "Should I add Serilog for structured logging? It offers better logging capabilities than the built-in logger but adds complexity."
-- "Should I add MediatR for CQRS pattern implementation? It would provide better separation of concerns but adds a dependency."
+## Testing Patterns (Already Set Up)
+- Use xUnit for unit tests
+- Use NSubstitute for mocking (see existing UserServiceTests example)
+- Use the in-memory database for service testing
+- Integration tests available with Testcontainers
 
 ## Step-by-Step Guide for Adding New Routes
 
@@ -437,23 +323,20 @@ public static class UserMappings
 In `{ModuleName}Service.cs`, implement the business logic:
 
 ```csharp
-public class UserService : IUserService
+public class UserService(IValidationService validationService, OdaryDbContext dbContext) : IUserService
 {
-    private readonly IValidationService _validationService;
-    private readonly IUserRepository _userRepository;
-
     // Add new service method
     public async Task<UserResources.V1.ArchivedUser> ArchiveUserAsync(
         UserCommands.V1.ArchiveUser command, 
         CancellationToken cancellationToken = default)
     {
-        await _validationService.ValidateAsync(command, cancellationToken);
+        await validationService.ValidateAsync(command, cancellationToken);
         
-        var user = await _userRepository.GetByIdAsync(command.Id, cancellationToken);
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == command.Id, cancellationToken);
         if (user == null) throw new NotFoundException($"User with ID {command.Id} not found");
         
         user.Archive(command.Reason);
-        await _userRepository.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         
         return user.ToArchivedUserContract(command.Reason);
     }
@@ -502,7 +385,7 @@ In `{ModuleName}ModuleRegistration.cs`, register any new validators:
 ```csharp
 public static IServiceCollection AddUserModule(this IServiceCollection services)
 {
-    // Register validation service
+    // Register validation service (already exists)
     services.AddSingleton<IValidationService, ValidationService>();
     
     // Register existing validators
@@ -519,10 +402,7 @@ public static IServiceCollection AddUserModule(this IServiceCollection services)
 ```
 
 ### 7. **Test the Implementation**
-Create unit tests for:
-- Validator (if created)
-- Service method
-- Endpoint mapping (integration test)
+Create unit tests following the existing patterns in `tests/Odary.Api.Tests/Unit/`
 
 ### **Checklist for New Routes:**
 - [ ] Contract defined in `{ModuleName}Contracts.cs`

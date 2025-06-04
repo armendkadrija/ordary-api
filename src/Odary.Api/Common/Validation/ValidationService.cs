@@ -2,18 +2,11 @@ using FluentValidation;
 
 namespace Odary.Api.Common.Validation;
 
-public class ValidationService : IValidationService
+public class ValidationService(IServiceProvider serviceProvider) : IValidationService
 {
-    private readonly IServiceProvider _serviceProvider;
-    
-    public ValidationService(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-    
     public async Task ValidateAsync<T>(T request, CancellationToken cancellationToken = default)
     {
-        var validator = _serviceProvider.GetService<IValidator<T>>();
+        var validator = serviceProvider.GetService<IValidator<T>>();
         if (validator == null) return; // No validator registered, skip validation
         
         var result = await validator.ValidateAsync(request, cancellationToken);
