@@ -100,6 +100,47 @@ Content-Type: application/json
 }
 ```
 
+### Tenant Management
+
+**Create Clinic/Tenant (Clinic Signup)**
+```http
+POST /api/v1/tenants
+Content-Type: application/json
+
+{
+  "name": "Smile Dental Clinic",
+  "adminEmail": "admin@smile-dental.com",
+  "adminPassword": "SecurePass123",
+  "country": "USA",
+  "timezone": "America/New_York",
+  "logoUrl": "https://example.com/logo.png"
+}
+```
+
+**Get Tenant Settings**
+```http
+GET /api/v1/tenants/{tenantId}/settings
+Authorization: Bearer {token}
+```
+
+**Update Tenant Settings**
+```http
+PUT /api/v1/tenants/{tenantId}/settings
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "businessHoursStart": "09:00",
+  "businessHoursEnd": "18:00",
+  "workingDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+  "defaultAppointmentDuration": 45,
+  "smsRemindersEnabled": true,
+  "smsReminderHours": 24,
+  "locale": "en-US",
+  "currency": "USD"
+}
+```
+
 ### User Management
 
 **Create User**

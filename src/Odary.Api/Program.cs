@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Modules.Auth;
+using Odary.Api.Modules.Tenant;
 using Odary.Api.Modules.User;
 using System.Text;
 
@@ -20,6 +21,9 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "A modular .NET 9 API with clean architecture"
     });
+
+    // Custom schema IDs to handle nested classes properly
+    c.CustomSchemaIds(s => s?.FullName?.Replace("+", "."));
 
     // Include XML comments for Swagger
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -87,6 +91,7 @@ builder.Services.AddAuthorization();
 
 // Add modules
 builder.Services.AddAuthModule();
+builder.Services.AddTenantModule();
 builder.Services.AddUserModule();
 
 var app = builder.Build();
@@ -111,6 +116,7 @@ app.UseAuthorization();
 
 // Map module endpoints
 app.MapAuthEndpoints();
+app.MapTenantEndpoints();
 app.MapUserEndpoints();
 
 app.Run(); 
