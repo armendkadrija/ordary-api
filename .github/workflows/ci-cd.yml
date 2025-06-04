@@ -10,7 +10,25 @@ env:
   DOTNET_VERSION: '9.0.x'
 
 jobs:
-  test-and-build:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+
+  test:
+    needs: build
     runs-on: ubuntu-latest
     
     services:
