@@ -10,10 +10,11 @@ using Odary.Api.Modules.User;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var services = builder.Services;
 
 // Add services to the container
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+services.AddEndpointsApiExplorer();
+services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
@@ -60,7 +61,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add database context
-builder.Services.AddDbContext<OdaryDbContext>(options =>
+services.AddDbContext<OdaryDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .UseSnakeCaseNamingConvention());
 
@@ -68,7 +69,7 @@ builder.Services.AddDbContext<OdaryDbContext>(options =>
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is required"));
 
-builder.Services.AddAuthentication(options =>
+services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -88,25 +89,22 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+services.AddAuthorization();
 
 // Add modules
-builder.Services.AddAuthModule();
-builder.Services.AddTenantModule();
-builder.Services.AddUserModule();
+services.AddAuthModule()
+.AddTenantModule()
+.AddUserModule();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Odary API V1");
-        c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Odary API V1");
+    c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
+});
 
 // Add exception handling middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -116,8 +114,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Map module endpoints
-app.MapAuthEndpoints();
-app.MapTenantEndpoints();
-app.MapUserEndpoints();
+app.MapAuthEndpoints()
+.MapTenantEndpoints()
+.MapUserEndpoints();
 
-app.Run(); 
+app.Run();
