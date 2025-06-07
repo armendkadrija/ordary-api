@@ -1,7 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
+using Odary.Api.Common.Services;
 using Odary.Api.Common.Validation;
+using Odary.Api.Constants;
 using Odary.Api.Domain;
 
 namespace Odary.Api.Modules.Tenant;
@@ -21,8 +24,10 @@ public interface ITenantService
 
 public class TenantService(
     IValidationService validationService,
+    UserManager<Domain.User> userManager,
     OdaryDbContext dbContext,
-    ILogger<TenantService> logger) : ITenantService
+    ILogger<TenantService> logger,
+    ICurrentUserService currentUserService) : BaseService(currentUserService), ITenantService
 {
     public async Task<TenantResources.V1.Tenant> CreateTenantAsync(
         TenantCommands.V1.CreateTenant command, 
@@ -67,21 +72,22 @@ public class TenantService(
             );
             dbContext.TenantSettings.Add(settings);
 
-            // Create admin user for the tenant
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(command.AdminPassword);
+            // Create admin user for the tenant using UserManager
             var adminUser = new Domain.User(
                 tenant.Id, 
                 command.AdminEmail, 
-                passwordHash,
                 command.AdminEmail.Split('@')[0], // Default first name from email
                 "",                               // Default empty last name
-                "Admin"                           // Admin role
+                Roles.ADMIN                       // Admin role
             );
             
             // Apply business logic - set default active state
             adminUser.IsActive = true;
             
-            dbContext.Users.Add(adminUser);
+            // Use UserManager to create user with password (proper Identity way)
+            var userResult = await userManager.CreateAsync(adminUser, command.AdminPassword);
+            if (!userResult.Succeeded)
+                throw new BusinessException($"Failed to create admin user: {string.Join(", ", userResult.Errors.Select(e => e.Description))}");
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -99,9 +105,13 @@ public class TenantService(
     }
 
     public async Task<TenantQueries.V1.GetTenant.Response> GetTenantAsync(
-        TenantQueries.V1.GetTenant query, 
+        TenantQueries.V1.GetTenant query,
         CancellationToken cancellationToken = default)
     {
+        // Admin users can only access their own tenant information
+        if (CurrentUser.IsAdmin && query.Id != CurrentUser.TenantId)
+            throw new BusinessException("You can only access your own tenant information");
+
         var tenant = await dbContext.Tenants
             .Include(t => t.Settings)
             .FirstOrDefaultAsync(t => t.Id == query.Id, cancellationToken);
@@ -146,10 +156,14 @@ public class TenantService(
     }
 
     public async Task<TenantResources.V1.Tenant> UpdateTenantAsync(
-        TenantCommands.V1.UpdateTenant command, 
+        TenantCommands.V1.UpdateTenant command,
         CancellationToken cancellationToken = default)
     {
         await validationService.ValidateAsync(command, cancellationToken);
+
+        // Admin users can only update their own tenant
+        if (CurrentUser.IsAdmin && command.Id != CurrentUser.TenantId)
+            throw new BusinessException("You can only update your own tenant");
 
         var tenant = await dbContext.Tenants
             .FirstOrDefaultAsync(t => t.Id == command.Id, cancellationToken);
@@ -208,10 +222,14 @@ public class TenantService(
     }
 
     public async Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(
-        TenantCommands.V1.UpdateTenantSettings command, 
+        TenantCommands.V1.UpdateTenantSettings command,
         CancellationToken cancellationToken = default)
     {
         await validationService.ValidateAsync(command, cancellationToken);
+
+        // Admin users can only update their own tenant settings
+        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
+            throw new BusinessException("You can only update your own tenant settings");
 
         var settings = await dbContext.TenantSettings
             .FirstOrDefaultAsync(s => s.TenantId == command.TenantId, cancellationToken);
@@ -231,9 +249,13 @@ public class TenantService(
     }
 
     public async Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(
-        TenantQueries.V1.GetTenantSettings query, 
+        TenantQueries.V1.GetTenantSettings query,
         CancellationToken cancellationToken = default)
     {
+        // Admin users can only access their own tenant settings
+        if (CurrentUser.IsAdmin && query.TenantId != CurrentUser.TenantId)
+            throw new BusinessException("You can only access your own tenant settings");
+
         var settings = await dbContext.TenantSettings
             .FirstOrDefaultAsync(s => s.TenantId == query.TenantId, cancellationToken);
 

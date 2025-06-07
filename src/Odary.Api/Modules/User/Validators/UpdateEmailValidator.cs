@@ -2,9 +2,9 @@ using FluentValidation;
 
 namespace Odary.Api.Modules.User.Validators;
 
-public class UpdateUserValidator : AbstractValidator<UserCommands.V1.UpdateUser>
+public class UpdateEmailValidator : AbstractValidator<UserCommands.V1.UpdateEmail>
 {
-    public UpdateUserValidator()
+    public UpdateEmailValidator()
     {
         RuleFor(x => x.Id)
             .NotEmpty().WithMessage("User ID is required");

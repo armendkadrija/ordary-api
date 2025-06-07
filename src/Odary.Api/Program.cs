@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
+using Odary.Api.Common.Authorization;
+using Odary.Api.Common.Services;
+using Odary.Api.Domain;
 using Odary.Api.Modules.Auth;
 using Odary.Api.Modules.Tenant;
 using Odary.Api.Modules.User;
@@ -55,15 +60,57 @@ services.AddSwaggerGen(c =>
                     Id = "Bearer"
                 }
             },
-            Array.Empty<string>()
+            []
         }
     });
+});
+
+// Add HTTP context accessor for audit logging and current user service
+services.AddHttpContextAccessor();
+
+// Add current user service for tenant scoping
+services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Add audit service
+services.AddScoped<IAuditService, AuditService>();
+
+// Add Redis for distributed caching
+services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
 
 // Add database context
 services.AddDbContext<OdaryDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .UseSnakeCaseNamingConvention());
+
+// Add Identity services
+services.AddIdentity<User, Role>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 8;
+    options.Password.RequiredUniqueChars = 1;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+
+    // Sign in settings
+    options.SignIn.RequireConfirmedEmail = false;
+    options.SignIn.RequireConfirmedPhoneNumber = false;
+})
+.AddEntityFrameworkStores<OdaryDbContext>()
+.AddDefaultTokenProviders();
 
 // Add JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -89,7 +136,15 @@ services.AddAuthentication(options =>
     };
 });
 
+// Add authorization services
 services.AddAuthorization();
+services.AddScoped<IAuthorizationHandler, ClaimAuthorizationHandler>();
+
+// Add claims service for role-based claim management
+services.AddScoped<IClaimsService, ClaimsService>();
+
+// Add database seeder
+services.AddScoped<DatabaseSeeder>();
 
 // Add modules
 services.AddAuthModule()
@@ -113,9 +168,22 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Seed database and claims
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
+    
+    var claimsService = scope.ServiceProvider.GetRequiredService<IClaimsService>();
+    await claimsService.SeedClaimsAsync();
+}
+
 // Map module endpoints
 app.MapAuthEndpoints()
 .MapTenantEndpoints()
 .MapUserEndpoints();
 
 app.Run();
+
+// Make Program class public for testing
+public partial class Program { }

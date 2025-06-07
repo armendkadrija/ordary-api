@@ -327,6 +327,32 @@ public class ValidationException(List<ValidationFailure> errors) : Exception
 }
 ```
 
+## Authorization Strategy (Claims-Based)
+
+### Role Hierarchy
+- **SUPER_ADMIN**: Full system access
+- **ADMIN**: Tenant-level administration  
+- **DENTIST**: Clinical operations
+- **ASSISTANT**: Basic operations
+
+### When Creating a New Module:
+
+1. **Create Claims File**: `src/Odary.Api/Common/Authorization/Claims/{ModuleName}Claims.cs`
+   - Define module and action constants if needed
+   - Define permission constants using pattern `module:action` (reference constants)
+   - Create `All` array with `ClaimDefinition` entries
+   - Assign appropriate roles to each claim
+
+2. **Register Claims**: Add new claims to `ClaimsService.SeedClaimsAsync()` method
+
+3. **Protect Endpoints**: Add `.RequiresClaim({ModuleName}Claims.{Action})` to each endpoint
+
+### Authorization Checklist:
+- [ ] Claims file created with role assignments
+- [ ] Claims registered in seeding method  
+- [ ] All endpoints protected with RequiresClaim
+- [ ] Authorization tests written
+
 ## Database Conventions (Already Configured)
 - PostgreSQL database with EF Core
 - Snake_case naming convention for tables and columns (auto-configured)

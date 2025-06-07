@@ -34,10 +34,13 @@ public class UserCommands
 {
     public class V1
     {
-        public record CreateUser(string Email, string Password);
-        public record UpdateUser(string Id, string Email);
-        public record UpdatePassword(string Id, string CurrentPassword, string NewPassword);
+        public record CreateUser(string Email, string TenantId, string Role);
+        public record UpdateEmail(string Id, string Email);
         public record DeleteUser(string Id);
+        public record InviteUser(string Email, string FirstName, string LastName, string Role, string TenantId);
+        public record UpdateUserProfile(string Id, string FirstName, string LastName, string Role, bool IsActive);
+        public record LockUser(string Id);
+        public record UnlockUser(string Id);
     }
 }
 
@@ -55,6 +58,39 @@ public class UserResources
             public bool IsActive { get; init; }
             public DateTimeOffset CreatedAt { get; init; }
             public DateTimeOffset? UpdatedAt { get; init; }
+        }
+
+        public record CreateUserResponse
+        {
+            public string Id { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string FirstName { get; init; } = string.Empty;
+            public string LastName { get; init; } = string.Empty;
+            public string Role { get; init; } = string.Empty;
+            public bool IsActive { get; init; }
+            public DateTimeOffset CreatedAt { get; init; }
+            public DateTimeOffset? UpdatedAt { get; init; }
+            public string GeneratedPassword { get; init; } = string.Empty;
+        }
+
+        public record UserProfile
+        {
+            public string Id { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string FirstName { get; init; } = string.Empty;
+            public string LastName { get; init; } = string.Empty;
+            public string Role { get; init; } = string.Empty;
+            public bool IsActive { get; init; }
+            public DateTime? LastLoginAt { get; init; }
+            public DateTimeOffset CreatedAt { get; init; }
+        }
+
+        public record InvitationResponse
+        {
+            public string Id { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string InvitationToken { get; init; } = string.Empty;
+            public DateTime ExpiresAt { get; init; }
         }
     }
 } 

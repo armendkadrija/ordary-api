@@ -1,4 +1,5 @@
 using FluentValidation;
+using Odary.Api.Constants;
 
 namespace Odary.Api.Modules.User.Validators;
 
@@ -11,11 +12,13 @@ public class CreateUserValidator : AbstractValidator<UserCommands.V1.CreateUser>
             .EmailAddress().WithMessage("Valid email format is required")
             .MaximumLength(255).WithMessage("Email must not exceed 255 characters");
 
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters")
-            .MaximumLength(100).WithMessage("Password must not exceed 100 characters")
-            .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]")
-            .WithMessage("Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character");
+        RuleFor(x => x.TenantId)
+            .NotEmpty().WithMessage("Tenant ID is required")
+            .Length(36).WithMessage("Tenant ID must be a valid GUID format");
+
+        RuleFor(x => x.Role)
+            .NotEmpty().WithMessage("Role is required")
+            .Must(role => new[] { Roles.SUPER_ADMIN, Roles.ADMIN, Roles.DENTIST, Roles.ASSISTANT }.Contains(role))
+            .WithMessage($"Role must be one of: {Roles.SUPER_ADMIN}, {Roles.ADMIN}, {Roles.DENTIST}, {Roles.ASSISTANT}");
     }
 } 

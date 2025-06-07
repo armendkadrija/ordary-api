@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Odary.Api.Common.Database;
@@ -11,9 +12,11 @@ using Odary.Api.Common.Database;
 namespace Odary.Api.Migrations
 {
     [DbContext(typeof(OdaryDbContext))]
-    partial class OdaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250607204017_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -225,71 +228,6 @@ namespace Odary.Api.Migrations
                         .HasDatabaseName("ix_audit_logs_entity_type_entity_id");
 
                     b.ToTable("audit_logs", (string)null);
-                });
-
-            modelBuilder.Entity("Odary.Api.Domain.RefreshToken", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("ip_address");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_revoked");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("token");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UserAgent")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("user_agent");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_refresh_tokens");
-
-                    b.HasIndex("ExpiresAt")
-                        .HasDatabaseName("ix_refresh_tokens_expires_at");
-
-                    b.HasIndex("Token")
-                        .IsUnique()
-                        .HasDatabaseName("ix_refresh_tokens_token");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_refresh_tokens_user_id");
-
-                    b.ToTable("refresh_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Odary.Api.Domain.Role", b =>
@@ -658,18 +596,6 @@ namespace Odary.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_audit_logs_users_user_id");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Odary.Api.Domain.RefreshToken", b =>
-                {
-                    b.HasOne("Odary.Api.Domain.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_refresh_tokens_users_user_id");
 
                     b.Navigation("User");
                 });

@@ -1,24 +1,81 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Odary.Api.Common.Services;
 using Odary.Api.Domain;
 
 namespace Odary.Api.Common.Database;
 
-public class OdaryDbContext : DbContext
+public class OdaryDbContext : IdentityDbContext<User, Role, string>
 {
+    private readonly IAuditService? _auditService;
+
     public OdaryDbContext(DbContextOptions<OdaryDbContext> options) : base(options)
     {
+    }
+
+    public OdaryDbContext(DbContextOptions<OdaryDbContext> options, IAuditService auditService) : base(options)
+    {
+        _auditService = auditService;
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateTimestamps();
-        return await base.SaveChangesAsync(cancellationToken);
+
+        // Create audit logs before saving
+        List<AuditLog>? auditLogs = null;
+        if (_auditService != null)
+        {
+            var auditableEntries = ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || 
+                           e.State == EntityState.Modified || 
+                           e.State == EntityState.Deleted)
+                .ToList();
+
+            auditLogs = await _auditService.CreateAuditLogsAsync(auditableEntries);
+        }
+
+        // Save the main changes
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        // Save audit logs in a separate transaction to avoid recursion
+        if (auditLogs != null && auditLogs.Any())
+        {
+            AuditLogs.AddRange(auditLogs);
+            await base.SaveChangesAsync(cancellationToken);
+        }
+
+        return result;
     }
 
     public override int SaveChanges()
     {
         UpdateTimestamps();
-        return base.SaveChanges();
+
+        // Create audit logs before saving
+        List<AuditLog>? auditLogs = null;
+        if (_auditService != null)
+        {
+            var auditableEntries = ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || 
+                           e.State == EntityState.Modified || 
+                           e.State == EntityState.Deleted)
+                .ToList();
+
+            auditLogs = _auditService.CreateAuditLogsAsync(auditableEntries).GetAwaiter().GetResult();
+        }
+
+        // Save the main changes
+        var result = base.SaveChanges();
+
+        // Save audit logs in a separate transaction to avoid recursion
+        if (auditLogs != null && auditLogs.Any())
+        {
+            AuditLogs.AddRange(auditLogs);
+            base.SaveChanges();
+        }
+
+        return result;
     }
 
     private void UpdateTimestamps()
@@ -39,9 +96,10 @@ public class OdaryDbContext : DbContext
         }
     }
 
-    public DbSet<User> Users { get; set; }
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<TenantSettings> TenantSettings { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,12 +111,27 @@ public class OdaryDbContext : DbContext
             // Indexes (can't be done with annotations in a clean way)
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.LastLoginAt);
 
-            // Foreign key relationship with Tenant
+            // Foreign key relationship with Tenant (nullable for BusinessAdmin)
             entity.HasOne(e => e.Tenant)
                 .WithMany(t => t.Users)
                 .HasForeignKey(e => e.TenantId)
+                .IsRequired(false) // Allow null for BusinessAdmin users
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure password history as JSON column
+            entity.Property(e => e.PasswordHistory)
+                .HasConversion(
+                    v => string.Join(';', v),
+                    v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
+                );
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            // Roles are now global - ensure unique role names
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         modelBuilder.Entity<Tenant>(entity =>
@@ -77,6 +150,34 @@ public class OdaryDbContext : DbContext
             entity.HasOne(e => e.Tenant)
                 .WithOne(t => t.Settings)
                 .HasForeignKey<TenantSettings>(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            // Indexes
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.EntityType, e.EntityId });
+
+            // Foreign key relationships
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            // Indexes
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ExpiresAt);
+
+            // Foreign key relationships
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

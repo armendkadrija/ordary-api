@@ -1,5 +1,3 @@
-using Odary.Api.Domain;
-
 namespace Odary.Api.Modules.User;
 
 public static class UserMappings
@@ -31,6 +29,21 @@ public static class UserMappings
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
+        };
+    }
+
+    public static UserResources.V1.UserProfile ToUserProfile(this Domain.User user)
+    {
+        return new UserResources.V1.UserProfile
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            LastLoginAt = user.LastLoginAt,
+            CreatedAt = user.CreatedAt
         };
     }
 } 

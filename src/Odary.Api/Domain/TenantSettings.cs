@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Odary.Api.Common.Interfaces;
 
 namespace Odary.Api.Domain;
 
-public class TenantSettings : BaseEntity
+public class TenantSettings : BaseEntity, IAuditable
 {
     [MaxLength(50)]
     public string TenantId { get; set; } = string.Empty;
@@ -32,5 +33,16 @@ public class TenantSettings : BaseEntity
         Currency = currency;
         DateFormat = dateFormat;
         TimeFormat = timeFormat;
+    }
+
+    public Dictionary<string, object?> GetAuditableProperties()
+    {
+        return new Dictionary<string, object?>
+        {
+            [nameof(Language)] = Language,
+            [nameof(Currency)] = Currency,
+            [nameof(DateFormat)] = DateFormat,
+            [nameof(TimeFormat)] = TimeFormat
+        };
     }
 } 

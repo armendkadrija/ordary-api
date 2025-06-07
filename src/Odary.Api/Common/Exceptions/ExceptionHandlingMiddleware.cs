@@ -3,22 +3,13 @@ using System.Text.Json;
 
 namespace Odary.Api.Common.Exceptions;
 
-public class ExceptionHandlingMiddleware
+public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
-
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (Exception ex)
         {
@@ -38,25 +29,25 @@ public class ExceptionHandlingMiddleware
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 response.Message = "Validation failed";
                 response.Details = validationEx.GetValidationErrors();
-                _logger.LogWarning("Validation failed: {@ValidationErrors}", validationEx.GetValidationErrors());
+                logger.LogWarning("Validation failed: {@ValidationErrors}", validationEx.GetValidationErrors());
                 break;
 
             case NotFoundException notFoundEx:
                 context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                 response.Message = notFoundEx.Message;
-                _logger.LogWarning("Resource not found: {Message}", notFoundEx.Message);
+                logger.LogWarning("Resource not found: {Message}", notFoundEx.Message);
                 break;
 
             case BusinessException businessEx:
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 response.Message = businessEx.Message;
-                _logger.LogWarning("Business rule violation: {Message}", businessEx.Message);
+                logger.LogWarning("Business rule violation: {Message}", businessEx.Message);
                 break;
 
             default:
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 response.Message = "An error occurred while processing your request";
-                _logger.LogError(exception, "Unhandled exception occurred");
+                logger.LogError(exception, "Unhandled exception occurred");
                 break;
         }
 
