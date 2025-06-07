@@ -58,11 +58,11 @@ public class TenantService(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             // Create default tenant settings
-            var settings = new Domain.TenantSettings(
+            var settings = new TenantSettings(
                 tenant.Id,
                 "en-US",              // Default language
-                "USD",                // Default currency
-                "MM/dd/yyyy",         // Default date format
+                "EUR",                // Default currency
+                "dd/MM/yyyy",         // Default date format
                 "h:mm tt"             // Default time format
             );
             dbContext.TenantSettings.Add(settings);
