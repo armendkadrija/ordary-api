@@ -30,7 +30,8 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
-    
+    container: mcr.microsoft.com/dotnet/sdk:9.0
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -43,16 +44,17 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Restore dependencies
       run: dotnet restore
@@ -60,10 +62,36 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Run unit tests
-      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+    - name: Run database migrations
+      run: dotnet ef database update --project src/Odary.Api/Odary.Api.csproj --configuration Release
       env:
-        ConnectionStrings__DefaultConnection: "Host=localhost;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
+        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
+        ASPNETCORE_ENVIRONMENT: "Testing"
+
+    - name: Run tests
+      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --no-build
+      env:
+        # Database Configuration
+        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
+        
+        # Redis Configuration
+        RedisSettings__ConnectionString: "redis:6379"
+        
+        # JWT Configuration for testing
+        JwtSettings__SecretKey: "your-super-secret-key-that-should-be-at-least-32-characters-long-for-security"
+        JwtSettings__Issuer: "Odary.Api"
+        JwtSettings__Audience: "Odary.Api.Users"
+        JwtSettings__ExpiryHours: "1"
+        JwtSettings__RefreshTokenExpiryDays: "7"
+        
+        # Email Configuration for testing (mock values)
+        EmailSettings__SmtpHost: "localhost"
+        EmailSettings__SmtpPort: "1025"
+        EmailSettings__SmtpUsername: ""
+        EmailSettings__SmtpPassword: ""
+        EmailSettings__FromEmail: "noreply@odary.com"
+        EmailSettings__FromName: "Odary Dental Practice"
+        EmailSettings__FrontendUrl: "http://localhost:3000"
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
