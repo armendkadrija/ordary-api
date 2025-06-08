@@ -76,14 +76,14 @@ jobs:
     - name: Run database migrations
       run: dotnet ef database update --project src/Odary.Api/Odary.Api.csproj --configuration Release
       env:
-        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
+        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test_${{ github.run_id }};Username=postgres;Password=postgres;Port=5432"
         ASPNETCORE_ENVIRONMENT: "Testing"
 
     - name: Run tests
       run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
       env:
         # Database Configuration
-        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
+        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test_${{ github.run_id }};Username=postgres;Password=postgres;Port=5432"
         
         # Redis Configuration  
         ConnectionStrings__Redis: "redis:6379"

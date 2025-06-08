@@ -26,17 +26,25 @@ public class DatabaseSeeder(RoleManager<Role> roleManager, ILogger<DatabaseSeede
             if (await roleManager.RoleExistsAsync(roleInfo.Name))
                 continue;
             
-            var role = new Role(roleInfo.Name, roleInfo.Description);
-            var result = await roleManager.CreateAsync(role);
-                
-            if (result.Succeeded)
+            try
             {
-                logger.LogInformation("Created role: {RoleName}", roleInfo.Name);
+                var role = new Role(roleInfo.Name, roleInfo.Description);
+                var result = await roleManager.CreateAsync(role);
+                    
+                if (result.Succeeded)
+                {
+                    logger.LogInformation("Created role: {RoleName}", roleInfo.Name);
+                }
+                else
+                {
+                    logger.LogError("Failed to create role {RoleName}: {Errors}", 
+                        roleInfo.Name, string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
             }
-            else
+            catch (Exception ex) when (ex.Message.Contains("duplicate key") || ex.Message.Contains("23505"))
             {
-                logger.LogError("Failed to create role {RoleName}: {Errors}", 
-                    roleInfo.Name, string.Join(", ", result.Errors.Select(e => e.Description)));
+                // Role already exists due to race condition - this is expected in concurrent scenarios
+                logger.LogDebug("Role {RoleName} already exists (race condition handled)", roleInfo.Name);
             }
         }
     }
