@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Validation;
+using Odary.Api.Modules.Email;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -26,6 +27,7 @@ public class AuthService(
     SignInManager<Domain.User> signInManager,
     OdaryDbContext dbContext,
     IConfiguration configuration,
+    IEmailService emailService,
     ILogger<AuthService> logger) : IAuthService
 {
     private const int MaxFailedAttempts = 5;
@@ -167,35 +169,71 @@ public class AuthService(
         if (user == null)
             return "If the email exists, a password reset link has been sent."; // Don't reveal if email exists
 
+        // Use ASP.NET Identity's built-in token generation with configured expiry
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
 
-        // In production, send email with reset link containing the token
-        // For now, just return the token (you'd typically send an email)
-        return token;
+        // Send password reset email with the ASP.NET Identity token
+        try
+        {
+            var emailCommand = new EmailCommands.V1.SendPasswordReset(
+                command.Email,
+                user.FirstName,
+                token, // Use the ASP.NET Identity token directly
+                DateTimeOffset.UtcNow.AddHours(1)); // This should match the configured TokenLifespan
+            
+            await emailService.SendPasswordResetAsync(emailCommand, cancellationToken);
+            logger.LogInformation("Password reset email sent successfully to {Email}", command.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send password reset email to {Email}", command.Email);
+        }
+
+        return "If the email exists, a password reset link has been sent.";
     }
 
     public async Task ResetPasswordAsync(AuthCommands.V1.ResetPassword command, CancellationToken cancellationToken = default)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
-        // Extract user ID from token or implement your token validation logic
-        // For now, assuming token contains user ID (in production, use proper token validation)
-        var tokenParts = command.Token.Split('|');
-        if (tokenParts.Length != 2)
-            throw new BusinessException("Invalid reset token");
+        // Find user by trying to verify the token
+        // This approach iterates through users to find the one the token belongs to
+        Domain.User? targetUser = null;
+        
+        // Get all users from database and try to verify token for each
+        var allUsers = await dbContext.Users.ToListAsync(cancellationToken);
+        
+        foreach (var user in allUsers)
+        {
+            var isValidToken = await userManager.VerifyUserTokenAsync(
+                user,
+                "Default",
+                "ResetPassword",
+                command.Token);
 
-        var user = await userManager.FindByIdAsync(tokenParts[0]);
-        if (user == null)
-            throw new BusinessException("Invalid reset token");
+            if (isValidToken)
+            {
+                targetUser = user;
+                break;
+            }
+        }
 
-        var result = await userManager.ResetPasswordAsync(user, tokenParts[1], command.NewPassword);
+        if (targetUser == null)
+            throw new BusinessException("Invalid or expired reset token");
+
+        // Reset password using ASP.NET Identity's built-in method
+        var result = await userManager.ResetPasswordAsync(targetUser, command.Token, command.NewPassword);
         if (!result.Succeeded)
             throw new BusinessException(string.Join(", ", result.Errors.Select(e => e.Description)));
 
         // Clear failed attempts
-        user.FailedLoginAttempts = 0;
-        user.LockedUntil = null;
-        await userManager.UpdateAsync(user);
+        targetUser.FailedLoginAttempts = 0;
+        targetUser.LockedUntil = null;
+        await userManager.UpdateAsync(targetUser);
+
+
+
+        logger.LogInformation("Password reset successfully for user: {Email}", targetUser.Email);
     }
 
     public async Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken = default)

@@ -18,6 +18,11 @@ services:
       - JwtSettings__Audience=Odary.Api.Users
       - JwtSettings__ExpiryHours=1
       - JwtSettings__RefreshTokenExpiryDays=7
+      - EmailSettings__SmtpHost=mailhog
+      - EmailSettings__SmtpPort=1025
+      - EmailSettings__FromEmail=noreply@odary.com
+      - EmailSettings__FromName=Odary Dental Practice
+      - EmailSettings__FrontendUrl=http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,6 +61,17 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    networks:
+      - odary-network
+
+  mailhog:
+    container_name: odary-mailhog
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    environment:
+      - MH_STORAGE=memory
     networks:
       - odary-network
 

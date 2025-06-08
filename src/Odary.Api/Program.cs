@@ -10,6 +10,7 @@ using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Services;
 using Odary.Api.Domain;
 using Odary.Api.Modules.Auth;
+using Odary.Api.Modules.Email;
 using Odary.Api.Modules.Tenant;
 using Odary.Api.Modules.User;
 using System.Text;
@@ -112,6 +113,12 @@ services.AddIdentity<User, Role>(options =>
 .AddEntityFrameworkStores<OdaryDbContext>()
 .AddDefaultTokenProviders();
 
+// Configure token lifespan for password reset
+services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromHours(1); // Password reset tokens expire in 1 hour
+});
+
 // Add JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is required"));
@@ -148,6 +155,7 @@ services.AddScoped<DatabaseSeeder>();
 
 // Add modules
 services.AddAuthModule()
+.AddEmailModule(builder.Configuration)
 .AddTenantModule()
 .AddUserModule();
 

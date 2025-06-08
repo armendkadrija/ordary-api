@@ -4,7 +4,7 @@ using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
 using Odary.Api.Common.Validation;
-using Odary.Api.Common.Authorization;
+using Odary.Api.Modules.Email;
 
 namespace Odary.Api.Modules.User;
 
@@ -28,7 +28,7 @@ public class UserService(
     OdaryDbContext dbContext,
     ILogger<UserService> logger,
     ICurrentUserService currentUserService,
-    IClaimsService claimsService) : BaseService(currentUserService), IUserService
+    IEmailService emailService) : BaseService(currentUserService), IUserService
 {
     private const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
 
@@ -198,8 +198,8 @@ public class UserService(
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
-        // Validate tenant access for Admin users
-        if ( CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
+        // Validate tenant access for Admin users (SuperAdmins can invite to any tenant)
+        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
             throw new BusinessException("You can only invite users to your own tenant");
 
         // Validate that the specified tenant exists
@@ -223,16 +223,34 @@ public class UserService(
             throw new BusinessException(string.Join(", ", result.Errors.Select(e => e.Description)));
 
         var invitationToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var expiresAt = DateTimeOffset.UtcNow.AddDays(1);
+
+        // Send invitation email
+        try
+        {
+            var emailCommand = new EmailCommands.V1.SendUserInvitation(
+                command.Email,
+                command.FirstName,
+                command.LastName,
+                $"{user.Id}|{invitationToken}",
+                expiresAt);
+            
+            await emailService.SendUserInvitationAsync(emailCommand);
+            logger.LogInformation("Invitation email sent successfully to {Email}", command.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send invitation email to {Email}, but user was created", command.Email);
+        }
 
         logger.LogInformation("User invitation created successfully with ID: {UserId} in Tenant: {TenantId}", user.Id, command.TenantId);
         
-        // In production, send invitation email
         return new UserResources.V1.InvitationResponse
         {
             Id = user.Id,
             Email = user.Email ?? string.Empty,
             InvitationToken = $"{user.Id}|{invitationToken}",
-            ExpiresAt = DateTime.UtcNow.AddDays(1)
+            ExpiresAt = expiresAt.DateTime
         };
     }
 
