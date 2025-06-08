@@ -62,6 +62,9 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
+    - name: Install EF Core tools
+      run: dotnet tool install --global dotnet-ef
+
     - name: Run database migrations
       run: dotnet ef database update --project src/Odary.Api/Odary.Api.csproj --configuration Release
       env:
