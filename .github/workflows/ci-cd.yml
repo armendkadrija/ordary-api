@@ -63,7 +63,9 @@ jobs:
       run: dotnet build --no-restore --configuration Release
 
     - name: Install EF Core tools
-      run: dotnet tool install --global dotnet-ef
+      run: |
+        dotnet tool install --global dotnet-ef
+        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
     - name: Run database migrations
       run: dotnet ef database update --project src/Odary.Api/Odary.Api.csproj --configuration Release
@@ -77,8 +79,8 @@ jobs:
         # Database Configuration
         ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
         
-        # Redis Configuration
-        RedisSettings__ConnectionString: "redis:6379"
+        # Redis Configuration  
+        ConnectionStrings__Redis: "redis:6379"
         
         # JWT Configuration for testing
         JwtSettings__SecretKey: "your-super-secret-key-that-should-be-at-least-32-characters-long-for-security"
