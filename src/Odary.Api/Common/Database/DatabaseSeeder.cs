@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
 
@@ -41,7 +42,9 @@ public class DatabaseSeeder(RoleManager<Role> roleManager, ILogger<DatabaseSeede
                         roleInfo.Name, string.Join(", ", result.Errors.Select(e => e.Description)));
                 }
             }
-            catch (Exception ex) when (ex.Message.Contains("duplicate key") || ex.Message.Contains("23505"))
+            catch (DbUpdateException ex) 
+                when (ex.InnerException?.Message?.Contains("23505") == true || 
+                      ex.InnerException?.Message?.Contains("duplicate key") == true)
             {
                 // Role already exists due to race condition - this is expected in concurrent scenarios
                 logger.LogDebug("Role {RoleName} already exists (race condition handled)", roleInfo.Name);
