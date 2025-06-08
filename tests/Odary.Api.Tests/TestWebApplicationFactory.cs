@@ -43,7 +43,7 @@ public class TestWebApplicationFactory<TProgram> : WebApplicationFactory<TProgra
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureTestServices(services =>
+        builder.ConfigureServices(services =>
         {
             // Replace email service with mock (keep PostgreSQL and Redis real)
             var emailServiceDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailService));
