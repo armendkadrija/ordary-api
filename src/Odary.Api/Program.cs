@@ -176,14 +176,17 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed database and claims
-using (var scope = app.Services.CreateScope())
+// Seed database and claims (skip in Testing environment)
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-    await seeder.SeedAsync();
-    
-    var claimsService = scope.ServiceProvider.GetRequiredService<IClaimsService>();
-    await claimsService.SeedClaimsAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
+        
+        var claimsService = scope.ServiceProvider.GetRequiredService<IClaimsService>();
+        await claimsService.SeedClaimsAsync();
+    }
 }
 
 // Map module endpoints

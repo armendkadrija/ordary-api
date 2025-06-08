@@ -82,6 +82,7 @@ jobs:
     - name: Run tests
       run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
       env:
+        DOTNET_ENVIRONMENT: "Testing"
         # Database Configuration
         ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test_${{ github.run_id }};Username=postgres;Password=postgres;Port=5432"
         
@@ -103,6 +104,13 @@ jobs:
         EmailSettings__FromEmail: "noreply@odary.com"
         EmailSettings__FromName: "Odary Dental Practice"
         EmailSettings__FrontendUrl: "http://localhost:3000"
+        
+        # Logging Configuration - Reduce verbose output
+        Logging__LogLevel__Default: "Warning"
+        Logging__LogLevel__Microsoft: "Warning"
+        Logging__LogLevel__Microsoft.EntityFrameworkCore: "Error"
+        Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: "None"
+        Logging__LogLevel__System: "Warning"
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
