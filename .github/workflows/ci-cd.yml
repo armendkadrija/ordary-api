@@ -74,7 +74,7 @@ jobs:
         ASPNETCORE_ENVIRONMENT: "Testing"
 
     - name: Run tests
-      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --no-build
+      run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
       env:
         # Database Configuration
         ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test;Username=postgres;Password=postgres;Port=5432"
