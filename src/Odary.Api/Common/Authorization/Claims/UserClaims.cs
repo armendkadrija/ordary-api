@@ -21,7 +21,6 @@ public static class UserClaims
         new()
         {
             ClaimName = Invite,
-            Description = "Invite new users",
             DefaultAssignments = [Roles.SUPER_ADMIN, Roles.ADMIN]
         },
         new()

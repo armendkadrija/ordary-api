@@ -1,5 +1,5 @@
-using Odary.Api.Common.Extensions;
 using System.Security.Claims;
+using Odary.Api.Extensions;
 
 namespace Odary.Api.Common.Services;
 

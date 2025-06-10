@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
-using Odary.Api.Common.Validation;
-using Odary.Api.Modules.Email;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Odary.Api.Common.Services;
+using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Modules.Auth;
 
@@ -314,10 +314,8 @@ public class AuthService(
             .Where(rt => rt.UserId == user.Id && (rt.IsRevoked || rt.ExpiresAt <= DateTime.UtcNow))
             .ToListAsync();
         
-        if (expiredTokens.Any())
-        {
+        if (expiredTokens.Count != 0)
             dbContext.RefreshTokens.RemoveRange(expiredTokens);
-        }
 
         dbContext.RefreshTokens.Add(refreshToken);
         await dbContext.SaveChangesAsync();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Odary.Api.Common.Extensions;
+using Odary.Api.Common.Services;
+using Odary.Api.Extensions;
 
 namespace Odary.Api.Common.Authorization;
 

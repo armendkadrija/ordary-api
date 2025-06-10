@@ -3,7 +3,7 @@ using System.Net.Mail;
 using System.Web;
 using Microsoft.Extensions.Options;
 
-namespace Odary.Api.Modules.Email;
+namespace Odary.Api.Infrastructure.Email;
 
 public interface IEmailService
 {

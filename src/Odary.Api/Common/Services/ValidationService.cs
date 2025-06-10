@@ -1,6 +1,11 @@
 using FluentValidation;
 
-namespace Odary.Api.Common.Validation;
+namespace Odary.Api.Common.Services;
+
+public interface IValidationService
+{
+    Task ValidateAsync<T>(T request, CancellationToken cancellationToken = default);
+} 
 
 public class ValidationService(IServiceProvider serviceProvider) : IValidationService
 {

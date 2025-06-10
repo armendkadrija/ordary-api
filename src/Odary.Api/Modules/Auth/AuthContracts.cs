@@ -1,5 +1,3 @@
-using Odary.Api.Common.Pagination;
-
 namespace Odary.Api.Modules.Auth;
 
 public class AuthQueries

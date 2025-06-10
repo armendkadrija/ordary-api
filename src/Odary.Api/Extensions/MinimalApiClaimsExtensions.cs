@@ -1,7 +1,8 @@
-using Odary.Api.Common.Extensions;
+using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Authorization.Claims;
+using Odary.Api.Common.Services;
 
-namespace Odary.Api.Common.Authorization;
+namespace Odary.Api.Extensions;
 
 public static class MinimalApiClaimsExtensions
 {

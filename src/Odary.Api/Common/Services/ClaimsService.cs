@@ -1,10 +1,9 @@
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Odary.Api.Common.Database;
-using Odary.Api.Common.Authorization.Claims;
 
-namespace Odary.Api.Common.Authorization;
+namespace Odary.Api.Common.Services;
 
 public interface IClaimsService
 {
@@ -17,11 +16,9 @@ public interface IClaimsService
     /// Checks if a role has a specific claim
     /// </summary>
     Task<bool> HasClaimAsync(string role, string claim, CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// Seeds all claim definitions and role assignments
-    /// </summary>
-    Task SeedClaimsAsync(CancellationToken cancellationToken = default);
+
+    Task InvalidateRoleCacheAsync(string role);
+
 }
 
 public class ClaimsService(
@@ -81,59 +78,7 @@ public class ClaimsService(
         return claims.Contains(claim);
     }
 
-    public async Task SeedClaimsAsync(CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Starting claim seeding process");
-
-        // Get all claim definitions
-        var allClaimDefinitions = new List<ClaimDefinition>();
-        allClaimDefinitions.AddRange(TenantClaims.All);
-        allClaimDefinitions.AddRange(UserClaims.All);
-
-        foreach (var definition in allClaimDefinitions)
-        {
-            await SeedClaimDefinition(definition, cancellationToken);
-        }
-
-        logger.LogInformation("Completed seeding {ClaimCount} claims", allClaimDefinitions.Count);
-    }
-
-    private async Task SeedClaimDefinition(ClaimDefinition definition, CancellationToken cancellationToken)
-    {
-        var claimName = definition.ClaimName;
-
-        // Assign to roles (we don't need a separate Claims table, just use RoleClaims)
-        foreach (var roleName in definition.DefaultAssignments)
-        {
-            var role = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName, cancellationToken);
-            if (role == null)
-            {
-                logger.LogWarning("Role {RoleName} not found for claim {ClaimName}", roleName, claimName);
-                continue;
-            }
-
-            var existingRoleClaim = await dbContext.RoleClaims
-                .FirstOrDefaultAsync(rc => rc.RoleId == role.Id && rc.ClaimValue == claimName, cancellationToken);
-
-            if (existingRoleClaim == null)
-            {
-                var roleClaim = new Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>
-                {
-                    RoleId = role.Id,
-                    ClaimType = "permission",
-                    ClaimValue = claimName
-                };
-
-                dbContext.RoleClaims.Add(roleClaim);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                
-                logger.LogInformation("Assigned claim {ClaimName} to role {RoleName}", claimName, roleName);
-                
-                // Invalidate cache for this role
-                await InvalidateRoleCacheAsync(roleName);
-            }
-        }
-    }
+    
 
     public async Task InvalidateRoleCacheAsync(string role)
     {

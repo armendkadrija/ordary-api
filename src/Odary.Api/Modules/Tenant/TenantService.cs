@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
-using Odary.Api.Common.Validation;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
 

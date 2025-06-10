@@ -1,4 +1,4 @@
-namespace Odary.Api.Modules.Email;
+namespace Odary.Api.Infrastructure.Email;
 
 public class EmailCommands
 {

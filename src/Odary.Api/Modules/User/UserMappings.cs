@@ -7,7 +7,7 @@ public static class UserMappings
         return new UserResources.V1.User
         {
             Id = user.Id,
-            Email = user.Email,
+            Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,
@@ -22,7 +22,7 @@ public static class UserMappings
         return new UserQueries.V1.GetUser.Response
         {
             Id = user.Id,
-            Email = user.Email,
+            Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,

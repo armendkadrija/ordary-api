@@ -3,8 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
-using Odary.Api.Common.Validation;
-using Odary.Api.Modules.Email;
+using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Modules.User;
 

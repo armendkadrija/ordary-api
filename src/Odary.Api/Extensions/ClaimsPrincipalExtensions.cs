@@ -1,8 +1,9 @@
 using System.Security.Claims;
 using Odary.Api.Common.Authorization;
+using Odary.Api.Common.Services;
 using Odary.Api.Constants;
 
-namespace Odary.Api.Common.Extensions;
+namespace Odary.Api.Extensions;
 
 public static class ClaimsPrincipalExtensions
 {

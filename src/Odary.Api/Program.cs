@@ -1,163 +1,52 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Services;
-using Odary.Api.Domain;
 using Odary.Api.Modules.Auth;
-using Odary.Api.Modules.Email;
 using Odary.Api.Modules.Tenant;
 using Odary.Api.Modules.User;
-using System.Text;
+using Odary.Api.Extensions;
+using Odary.Api.Infrastructure.Database;
+using Odary.Api.Infrastructure.Email;
 
 var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
+var configuration = builder.Configuration;
 
 // Add services to the container
 services.AddEndpointsApiExplorer();
-services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Odary API",
-        Version = "v1",
-        Description = "A modular .NET 9 API with clean architecture"
-    });
-
-    // Custom schema IDs to handle nested classes properly
-    c.CustomSchemaIds(s => s?.FullName?.Replace("+", "."));
-
-    // Include XML comments for Swagger
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
-
-    // Add JWT authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            []
-        }
-    });
-});
-
+services.RegisterSwagger();
 // Add HTTP context accessor for audit logging and current user service
 services.AddHttpContextAccessor();
 
-// Add current user service for tenant scoping
-services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-// Add audit service
-services.AddScoped<IAuditService, AuditService>();
+// Add services
+services.AddScoped<ICurrentUserService, CurrentUserService>()
+    .AddScoped<IAuditService, AuditService>();
 
 // Add Redis for distributed caching
-services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetConnectionString("Redis");
-});
+services.AddStackExchangeRedisCache(options => { options.Configuration = builder.Configuration.GetConnectionString("Redis"); });
 
 // Add database context
 services.AddDbContext<OdaryDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .UseSnakeCaseNamingConvention());
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), options => options.MigrationsHistoryTable("__migrations_history"))
+        .UseSnakeCaseNamingConvention());
 
-// Add Identity services
-services.AddIdentity<User, Role>(options =>
-{
-    // Password settings
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 8;
-    options.Password.RequiredUniqueChars = 1;
-
-    // Lockout settings
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.AllowedForNewUsers = true;
-
-    // User settings
-    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
-    options.User.RequireUniqueEmail = true;
-
-    // Sign in settings
-    options.SignIn.RequireConfirmedEmail = false;
-    options.SignIn.RequireConfirmedPhoneNumber = false;
-})
-.AddEntityFrameworkStores<OdaryDbContext>()
-.AddDefaultTokenProviders();
-
-// Configure token lifespan for password reset
-services.Configure<DataProtectionTokenProviderOptions>(options =>
-{
-    options.TokenLifespan = TimeSpan.FromHours(1); // Password reset tokens expire in 1 hour
-});
-
-// Add JWT authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is required"));
-
-services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
-// Add authorization services
-services.AddAuthorization();
+services.RegisterAuthorization(configuration);
 services.AddScoped<IAuthorizationHandler, ClaimAuthorizationHandler>();
 
 // Add claims service for role-based claim management
 services.AddScoped<IClaimsService, ClaimsService>();
 
 // Add database seeder
-services.AddScoped<DatabaseSeeder>();
+services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 
 // Add modules
 services.AddAuthModule()
-.AddEmailModule(builder.Configuration)
-.AddTenantModule()
-.AddUserModule();
+    .AddEmailModule(builder.Configuration)
+    .AddTenantModule()
+    .AddUserModule();
 
 var app = builder.Build();
 
@@ -179,22 +68,13 @@ app.UseAuthorization();
 // Seed database and claims (skip in Testing environment)
 if (!app.Environment.IsEnvironment("Testing"))
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-        await seeder.SeedAsync();
-        
-        var claimsService = scope.ServiceProvider.GetRequiredService<IClaimsService>();
-        await claimsService.SeedClaimsAsync();
-    }
+    var seeder = app.Services.GetRequiredService<IDatabaseSeeder>();
+    await seeder.SeedAsync();
 }
 
 // Map module endpoints
 app.MapAuthEndpoints()
-.MapTenantEndpoints()
-.MapUserEndpoints();
+    .MapTenantEndpoints()
+    .MapUserEndpoints();
 
 app.Run();
-
-// Make Program class public for testing
-public partial class Program { }
