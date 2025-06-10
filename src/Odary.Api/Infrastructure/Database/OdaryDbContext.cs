@@ -129,17 +129,8 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
                 .IsRequired(false) // Allow null for BusinessAdmin users
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure password history as JSON column
-            entity.Property(e => e.PasswordHistory)
-                .HasConversion(
-                    v => string.Join(';', v),
-                    v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
-                )
-                .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<string>>(
-                    (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
-                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                    c => c.ToList()
-                ));
+            // Password history: List<string> automatically maps to text[] in PostgreSQL with Npgsql
+            // No explicit configuration needed - EF Core conventions handle this perfectly!
         });
 
         modelBuilder.Entity<Role>(entity =>
