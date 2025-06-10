@@ -1,10 +1,14 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Database;
+using Odary.Api.Common.Services;
 using Odary.Api.Domain;
+using Odary.Api.Infrastructure.Database;
 
 namespace Odary.Api.Extensions;
 
@@ -119,8 +123,11 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        // Add authorization services
-        services.AddAuthorization();
+
+        services.AddScoped<IClaimsService, ClaimsService>()
+            .AddScoped<IAuthorizationHandler, ClaimAuthorizationHandler>()
+            .AddScoped<IDatabaseSeeder, DatabaseSeeder>()
+            .AddAuthorization();
 
         return services;
     }
