@@ -89,7 +89,6 @@ public class ClaimsService(
         var allClaimDefinitions = new List<ClaimDefinition>();
         allClaimDefinitions.AddRange(TenantClaims.All);
         allClaimDefinitions.AddRange(UserClaims.All);
-        allClaimDefinitions.AddRange(AuditClaims.All);
 
         foreach (var definition in allClaimDefinitions)
         {
