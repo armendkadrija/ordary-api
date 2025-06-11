@@ -15,6 +15,7 @@ using System.Security.Claims;
 
 namespace Odary.Api.Tests.Integration;
 
+[Collection("IntegrationTests")]
 public class DatabaseSeederIntegrationTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly TestWebApplicationFactory _factory;
