@@ -32,33 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/dotnet/sdk:9.0
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: odary_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      mailhog:
-        image: mailhog/mailhog:latest
-        ports:
-          - 1025:1025
-          - 8025:8025
-
     steps:
     - uses: actions/checkout@v4
 
@@ -68,49 +41,10 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Install EF Core tools
-      run: |
-        dotnet tool install --global dotnet-ef
-        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-
-    - name: Run database migrations
-      run: dotnet ef database update --project src/Odary.Api/Odary.Api.csproj --configuration Release
-      env:
-        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test_${{ github.run_id }};Username=postgres;Password=postgres;Port=5432"
-        ASPNETCORE_ENVIRONMENT: "Testing"
-
     - name: Run tests
       run: dotnet test tests/Odary.Api.Tests/Odary.Api.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
       env:
         DOTNET_ENVIRONMENT: "Testing"
-        # Database Configuration
-        ConnectionStrings__DefaultConnection: "Host=postgres;Database=odary_test_${{ github.run_id }};Username=postgres;Password=postgres;Port=5432"
-        
-        # Redis Configuration  
-        ConnectionStrings__Redis: "redis:6379"
-        
-        # JWT Configuration for testing
-        JwtSettings__SecretKey: "your-super-secret-key-that-should-be-at-least-32-characters-long-for-security"
-        JwtSettings__Issuer: "Odary.Api"
-        JwtSettings__Audience: "Odary.Api.Users"
-        JwtSettings__ExpiryHours: "1"
-        JwtSettings__RefreshTokenExpiryDays: "7"
-        
-        # Email Configuration for testing (MailHog SMTP server)
-        EmailSettings__SmtpHost: "mailhog"
-        EmailSettings__SmtpPort: "1025"
-        EmailSettings__SmtpUsername: ""
-        EmailSettings__SmtpPassword: ""
-        EmailSettings__FromEmail: "noreply@odary.com"
-        EmailSettings__FromName: "Odary Dental Practice"
-        EmailSettings__FrontendUrl: "http://localhost:3000"
-        
-        # Logging Configuration - Reduce verbose output
-        Logging__LogLevel__Default: "Warning"
-        Logging__LogLevel__Microsoft: "Warning"
-        Logging__LogLevel__Microsoft.EntityFrameworkCore: "Error"
-        Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: "None"
-        Logging__LogLevel__System: "Warning"
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3

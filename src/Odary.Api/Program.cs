@@ -58,3 +58,6 @@ app.MapAuthEndpoints()
 await app.Services.GetRequiredService<IDatabaseSeeder>().SeedAsync();
 
 app.Run();
+
+// Make Program class accessible for testing
+public partial class Program { }
