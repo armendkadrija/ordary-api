@@ -1,10 +1,7 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
-using Odary.Api.Constants;
-using Odary.Api.Domain;
 
 namespace Odary.Api.Modules.Tenant;
 
@@ -16,6 +13,7 @@ public interface ITenantService
     Task<TenantResources.V1.Tenant> UpdateTenantAsync(TenantCommands.V1.UpdateTenant command, CancellationToken cancellationToken = default);
     Task DeactivateTenantAsync(TenantCommands.V1.DeactivateTenant command, CancellationToken cancellationToken = default);
     Task ActivateTenantAsync(TenantCommands.V1.ActivateTenant command, CancellationToken cancellationToken = default);
+    Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(TenantCommands.V1.CreateTenantSettings command, CancellationToken cancellationToken = default);
     Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(TenantCommands.V1.UpdateTenantSettings command, CancellationToken cancellationToken = default);
     Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(TenantQueries.V1.GetTenantSettings query, CancellationToken cancellationToken = default);
     Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken = default);
@@ -23,7 +21,6 @@ public interface ITenantService
 
 public class TenantService(
     IValidationService validationService,
-    UserManager<Domain.User> userManager,
     OdaryDbContext dbContext,
     ILogger<TenantService> logger,
     ICurrentUserService currentUserService) : BaseService(currentUserService), ITenantService
@@ -41,15 +38,6 @@ public class TenantService(
         if (existingTenant != null)
             throw new BusinessException("A clinic with this name already exists");
 
-        // Check if admin email is already used
-        var existingUser = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == command.AdminEmail, cancellationToken);
-        
-        if (existingUser != null)
-            throw new BusinessException("A user with this email already exists");
-
-        using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        
         try
         {
             // Create tenant
@@ -61,44 +49,13 @@ public class TenantService(
             dbContext.Tenants.Add(tenant);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // Create default tenant settings
-            var settings = new TenantSettings(
-                tenant.Id,
-                "en-US",              // Default language
-                "EUR",                // Default currency
-                "dd/MM/yyyy",         // Default date format
-                "h:mm tt"             // Default time format
-            );
-            dbContext.TenantSettings.Add(settings);
-
-            // Create admin user for the tenant using UserManager
-            var adminUser = new Domain.User(
-                tenant.Id, 
-                command.AdminEmail, 
-                command.AdminEmail.Split('@')[0], // Default first name from email
-                "",                               // Default empty last name
-                Roles.ADMIN                       // Admin role
-            );
-            
-            // Apply business logic - set default active state
-            adminUser.IsActive = true;
-            
-            // Use UserManager to create user with password (proper Identity way)
-            var userResult = await userManager.CreateAsync(adminUser, command.AdminPassword);
-            if (!userResult.Succeeded)
-                throw new BusinessException($"Failed to create admin user: {string.Join(", ", userResult.Errors.Select(e => e.Description))}");
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            logger.LogInformation("Tenant created successfully with ID: {TenantId}, Admin User ID: {UserId}", 
-                tenant.Id, adminUser.Id);
+            logger.LogInformation("Tenant created successfully with ID: {TenantId}", tenant.Id);
 
             return tenant.ToContract();
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Failed to create tenant: {TenantName}", command.Name);
             throw;
         }
     }
@@ -218,6 +175,46 @@ public class TenantService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Tenant activated successfully with ID: {TenantId}", tenant.Id);
+    }
+
+    public async Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(
+        TenantCommands.V1.CreateTenantSettings command,
+        CancellationToken cancellationToken = default)
+    {
+        await validationService.ValidateAsync(command, cancellationToken);
+
+        // Admin users can only create settings for their own tenant
+        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
+            throw new BusinessException("You can only create settings for your own tenant");
+
+        // Verify tenant exists and is active
+        var tenant = await dbContext.Tenants
+            .FirstOrDefaultAsync(t => t.Id == command.TenantId && t.IsActive, cancellationToken);
+
+        if (tenant == null)
+            throw new NotFoundException($"Active tenant with ID {command.TenantId} not found");
+
+        // Check if settings already exist for this tenant
+        var existingSettings = await dbContext.TenantSettings
+            .FirstOrDefaultAsync(s => s.TenantId == command.TenantId, cancellationToken);
+
+        if (existingSettings != null)
+            throw new BusinessException($"Settings already exist for tenant {command.TenantId}");
+
+        // Create new tenant settings
+        var settings = new Domain.TenantSettings(
+            command.TenantId,
+            command.Language,
+            command.Currency,
+            command.DateFormat,
+            command.TimeFormat);
+
+        dbContext.TenantSettings.Add(settings);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Tenant settings created successfully for tenant: {TenantId}", command.TenantId);
+
+        return settings.ToContract();
     }
 
     public async Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(

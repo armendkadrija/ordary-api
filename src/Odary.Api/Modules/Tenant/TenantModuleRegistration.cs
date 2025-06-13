@@ -18,6 +18,7 @@ public static class TenantModuleRegistration
         // Register validators
         services.AddScoped<IValidator<TenantCommands.V1.CreateTenant>, CreateTenantValidator>();
         services.AddScoped<IValidator<TenantCommands.V1.UpdateTenant>, UpdateTenantValidator>();
+        services.AddScoped<IValidator<TenantCommands.V1.CreateTenantSettings>, CreateTenantSettingsValidator>();
         services.AddScoped<IValidator<TenantCommands.V1.UpdateTenantSettings>, UpdateTenantSettingsValidator>();
 
         // Register services
@@ -123,6 +124,23 @@ public static class TenantModuleRegistration
 
         // Tenant Settings endpoints
         var settingsGroup = app.MapGroup("/api/v1/tenants/{tenantId}/settings").WithTags("Tenant Settings");
+
+        // Create tenant settings
+        settingsGroup.MapPost("/", async (
+            string tenantId,
+            [FromBody] TenantCommands.V1.CreateTenantSettings command,
+            ITenantService tenantService,
+            CancellationToken cancellationToken) =>
+        {
+            var updatedCommand = command with { TenantId = tenantId };
+            var result = await tenantService.CreateTenantSettingsAsync(updatedCommand, cancellationToken);
+            return Results.Created($"/api/v1/tenants/{tenantId}/settings", result);
+        })
+        .WithClaim(TenantClaims.Create)
+        .WithName("CreateTenantSettings")
+        .WithSummary("Create tenant-specific configuration settings")
+        .Produces<TenantSettingsResources.V1.TenantSettings>(StatusCodes.Status201Created)
+        .ProducesValidationProblem();
 
         // Get tenant settings
         settingsGroup.MapGet("/", async (

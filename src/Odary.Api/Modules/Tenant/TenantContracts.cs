@@ -53,8 +53,6 @@ public class TenantCommands
     {
         public record CreateTenant(
             string Name,
-            string AdminEmail,
-            string AdminPassword,
             string Country,
             string Timezone,
             string? LogoUrl = null);
@@ -68,6 +66,13 @@ public class TenantCommands
 
         public record DeactivateTenant(string Id);
         public record ActivateTenant(string Id);
+
+        public record CreateTenantSettings(
+            string TenantId,
+            string Language,
+            string Currency,
+            string DateFormat,
+            string TimeFormat);
 
         public record UpdateTenantSettings(
             string TenantId,

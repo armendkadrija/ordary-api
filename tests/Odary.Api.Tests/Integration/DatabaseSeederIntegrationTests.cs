@@ -1,8 +1,5 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Authorization.Claims;
 using Odary.Api.Common.Database;
@@ -10,8 +7,6 @@ using Odary.Api.Common.Services;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
 using Odary.Api.Infrastructure.Database;
-using Odary.Api.Tests.TestFixtures;
-using System.Security.Claims;
 
 namespace Odary.Api.Tests.Integration;
 

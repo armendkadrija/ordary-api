@@ -110,10 +110,18 @@ public class UserService(
         UserQueries.V1.GetUsers query,
         CancellationToken cancellationToken = default)
     {
-        // Filter users by current user's tenant
-        var usersQuery = dbContext.Users
-            .Where(u => u.TenantId == CurrentUser.TenantId)
-            .AsQueryable();
+        // Filter users based on user role
+        var usersQuery = dbContext.Users.AsQueryable();
+        
+        // SuperAdmins can see all users, Admins can only see users in their tenant
+        if (!CurrentUser.IsSuperAdmin)
+        {
+            var currentUserTenantId = CurrentUser.TenantId; // This can now be null for SuperAdmin
+            if (currentUserTenantId != null)
+            {
+                usersQuery = usersQuery.Where(u => u.TenantId == currentUserTenantId);
+            }
+        }
 
         // Apply additional filters
         if (!string.IsNullOrEmpty(query.Email))
@@ -318,8 +326,35 @@ public class UserService(
 
     private static string GenerateTemporaryPassword()
     {
+        const string lowercase = "abcdefghijklmnopqrstuvwxyz";
+        const string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string digits = "0123456789";
+        const string special = "!@#$%^&*";
+        
         var random = new Random();
-        return new string(Enumerable.Repeat(chars, 12)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        var password = new List<char>
+        {
+            // Ensure at least one character from each required category
+            lowercase[random.Next(lowercase.Length)],
+            uppercase[random.Next(uppercase.Length)],
+            digits[random.Next(digits.Length)],
+            special[random.Next(special.Length)]
+        };
+        
+        // Fill the rest with random characters from all categories
+        const string allChars = lowercase + uppercase + digits + special;
+        for (int i = 4; i < 12; i++)
+        {
+            password.Add(allChars[random.Next(allChars.Length)]);
+        }
+        
+        // Shuffle the password to avoid predictable patterns
+        for (int i = password.Count - 1; i > 0; i--)
+        {
+            int j = random.Next(i + 1);
+            (password[i], password[j]) = (password[j], password[i]);
+        }
+        
+        return new string(password.ToArray());
     }
 } 

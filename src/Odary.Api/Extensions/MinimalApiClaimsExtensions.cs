@@ -1,4 +1,3 @@
-using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Authorization.Claims;
 using Odary.Api.Common.Services;
 

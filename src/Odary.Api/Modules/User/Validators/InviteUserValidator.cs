@@ -26,6 +26,6 @@ public class InviteUserValidator : AbstractValidator<UserCommands.V1.InviteUser>
 
         RuleFor(x => x.TenantId)
             .NotEmpty().WithMessage("Tenant ID is required")
-            .Length(36).WithMessage("Tenant ID must be a valid GUID format");
+            .Length(32).WithMessage("Tenant ID must be a valid GUID format");
     }
 } 

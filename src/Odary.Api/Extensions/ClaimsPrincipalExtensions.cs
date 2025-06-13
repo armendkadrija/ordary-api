@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Odary.Api.Common.Authorization;
 using Odary.Api.Common.Services;
 using Odary.Api.Constants;
 
@@ -13,17 +12,17 @@ public static class ClaimsPrincipalExtensions
     /// <param name="principal">The claims principal</param>
     /// <returns>The tenant ID</returns>
     /// <exception cref="UnauthorizedAccessException">Thrown when tenant ID is not found</exception>
-    public static string GetTenantId(this ClaimsPrincipal principal)
+    public static string? GetTenantId(this ClaimsPrincipal principal)
     {
         var tenantId = principal.FindFirst("tenant_id")?.Value;
         if (!string.IsNullOrEmpty(tenantId))
             return tenantId;
-        // Allow SuperAdmin users to not have a tenant
+        
+        // SuperAdmin users don't have tenant IDs - return null instead of throwing
         if (principal.IsSuperAdmin())
-            throw new UnauthorizedAccessException("Super administrators are not attached to any tenant");
+            return null;
             
         throw new UnauthorizedAccessException("Tenant information not found in user context");
-
     }
 
     /// <summary>

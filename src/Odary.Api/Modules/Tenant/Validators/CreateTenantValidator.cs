@@ -12,22 +12,6 @@ public class CreateTenantValidator : AbstractValidator<TenantCommands.V1.CreateT
             .MaximumLength(255)
             .WithMessage("Clinic name cannot exceed 255 characters");
 
-        RuleFor(x => x.AdminEmail)
-            .NotEmpty()
-            .WithMessage("Admin email is required")
-            .EmailAddress()
-            .WithMessage("Invalid email format")
-            .MaximumLength(255)
-            .WithMessage("Email cannot exceed 255 characters");
-
-        RuleFor(x => x.AdminPassword)
-            .NotEmpty()
-            .WithMessage("Admin password is required")
-            .MinimumLength(8)
-            .WithMessage("Password must be at least 8 characters long")
-            .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)")
-            .WithMessage("Password must contain at least one lowercase letter, one uppercase letter, and one digit");
-
         RuleFor(x => x.Country)
             .NotEmpty()
             .WithMessage("Country is required")

@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace Odary.Api.Tests.Integration;
 
 /// <summary>
