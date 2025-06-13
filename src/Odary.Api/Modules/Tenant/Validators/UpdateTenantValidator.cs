@@ -1,9 +1,12 @@
 using FluentValidation;
+using System.Text.RegularExpressions;
 
 namespace Odary.Api.Modules.Tenant.Validators;
 
 public class UpdateTenantValidator : AbstractValidator<TenantCommands.V1.UpdateTenant>
 {
+    private static readonly Regex SlugRegex = new(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
+
     public UpdateTenantValidator()
     {
         RuleFor(x => x.Id)
@@ -28,6 +31,16 @@ public class UpdateTenantValidator : AbstractValidator<TenantCommands.V1.UpdateT
             .MaximumLength(100)
             .WithMessage("Timezone cannot exceed 100 characters");
 
+        RuleFor(x => x.Slug)
+            .NotEmpty()
+            .WithMessage("Slug is required")
+            .MinimumLength(3)
+            .WithMessage("Slug must be at least 3 characters long")
+            .MaximumLength(50)
+            .WithMessage("Slug cannot exceed 50 characters")
+            .Must(BeValidSlug)
+            .WithMessage("Slug must contain only lowercase letters, numbers, and hyphens. It cannot start or end with a hyphen.");
+
         RuleFor(x => x.LogoUrl)
             .MaximumLength(500)
             .WithMessage("Logo URL cannot exceed 500 characters")
@@ -43,5 +56,13 @@ public class UpdateTenantValidator : AbstractValidator<TenantCommands.V1.UpdateT
 
         return Uri.TryCreate(url, UriKind.Absolute, out var result) 
                && (result.Scheme == Uri.UriSchemeHttp || result.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static bool BeValidSlug(string slug)
+    {
+        if (string.IsNullOrEmpty(slug))
+            return false;
+
+        return SlugRegex.IsMatch(slug);
     }
 } 

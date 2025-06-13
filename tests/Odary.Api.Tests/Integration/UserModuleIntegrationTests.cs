@@ -56,14 +56,14 @@ public class UserModuleIntegrationTests : IAsyncLifetime
         await seeder.SeedAsync();
 
         // Create test tenant
-        var tenant = new Tenant("Test Clinic", "US", "America/New_York");
+        var tenant = new Tenant("Test Clinic", "US", "America/New_York", "test-clinic");
         tenant.IsActive = true;
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();
         _testTenantId = tenant.Id;
 
         // Create admin tenant for separation tests
-        var adminTenant = new Tenant("Admin Clinic", "CA", "America/Toronto");
+        var adminTenant = new Tenant("Admin Clinic", "CA", "America/Toronto", "admin-clinic");
         adminTenant.IsActive = true;
         context.Tenants.Add(adminTenant);
         await context.SaveChangesAsync();

@@ -143,6 +143,7 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
         {
             // Indexes
             entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Slug).IsUnique();
             entity.HasIndex(e => e.IsActive);
         });
 

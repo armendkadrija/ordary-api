@@ -53,8 +53,10 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         await seeder.SeedAsync();
 
         // Create test tenant
-        var tenant = new Tenant("Test Clinic", "US", "America/New_York", "https://example.com/logo.png");
-        tenant.IsActive = true;
+        var tenant = new Tenant("Test Clinic", "US", "America/New_York", "test-clinic", "https://example.com/logo.png")
+        {
+            IsActive = true
+        };
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();
         _testTenantId = tenant.Id;
@@ -66,14 +68,18 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         _testTenantSettingsId = settings.Id;
 
         // Create super admin user (no tenant)
-        var superAdminUser = new User(null, "superadmin@example.com", "Super", "Admin", Roles.SUPER_ADMIN);
-        superAdminUser.IsActive = true;
+        var superAdminUser = new User(null, "superadmin@example.com", "Super", "Admin", Roles.SUPER_ADMIN)
+        {
+            IsActive = true
+        };
         await userManager.CreateAsync(superAdminUser, "SuperAdminPassword123!");
         await userManager.AddToRoleAsync(superAdminUser, Roles.SUPER_ADMIN);
 
         // Create admin user for the test tenant
-        var adminUser = new User(_testTenantId, "admin@example.com", "Admin", "User", Roles.ADMIN);
-        adminUser.IsActive = true;
+        var adminUser = new User(_testTenantId, "admin@example.com", "Admin", "User", Roles.ADMIN)
+        {
+            IsActive = true
+        };
         await userManager.CreateAsync(adminUser, "AdminPassword123!");
         await userManager.AddToRoleAsync(adminUser, Roles.ADMIN);
 
@@ -135,6 +141,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
             name = "New Test Clinic",
             country = "CA",
             timezone = "America/Toronto",
+            slug = "new-test-clinic",
             logoUrl = "https://example.com/newlogo.png"
         };
 
@@ -151,6 +158,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         result.GetProperty("name").GetString().Should().Be("New Test Clinic");
         result.GetProperty("country").GetString().Should().Be("CA");
         result.GetProperty("timezone").GetString().Should().Be("America/Toronto");
+        result.GetProperty("slug").GetString().Should().Be("new-test-clinic");
         result.GetProperty("logoUrl").GetString().Should().Be("https://example.com/newlogo.png");
         result.GetProperty("isActive").GetBoolean().Should().BeTrue();
     }
@@ -163,7 +171,8 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         {
             name = "Test Clinic", // Already exists
             country = "CA",
-            timezone = "America/Toronto"
+            timezone = "America/Toronto",
+            slug = "duplicate-name-clinic"
         };
 
         // Act
@@ -175,8 +184,6 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("A clinic with this name already exists");
     }
-
-
 
     [Fact]
     public async Task CreateTenant_WithInvalidData_ReturnsBadRequest()
@@ -206,7 +213,8 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         {
             name = "Forbidden Clinic",
             country = "US",
-            timezone = "America/New_York"
+            timezone = "America/New_York",
+            slug = "forbidden-clinic"
         };
 
         // Act
@@ -214,6 +222,72 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CreateTenant_WithDuplicateSlug_ReturnsBadRequest()
+    {
+        // Arrange
+        var command = new
+        {
+            name = "Duplicate Slug Clinic",
+            country = "CA",
+            timezone = "America/Toronto",
+            slug = "test-clinic" // Already exists
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/tenants", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("This slug is already taken");
+    }
+
+    [Fact]
+    public async Task CreateTenant_WithInvalidSlugFormat_ReturnsBadRequest()
+    {
+        // Arrange
+        var command = new
+        {
+            name = "Invalid Slug Clinic",
+            country = "US",
+            timezone = "America/New_York",
+            slug = "Invalid_Slug!" // Contains invalid characters
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/tenants", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Slug must contain only lowercase letters, numbers, and hyphens");
+    }
+
+    [Fact]
+    public async Task CreateTenant_WithTooShortSlug_ReturnsBadRequest()
+    {
+        // Arrange
+        var command = new
+        {
+            name = "Short Slug Clinic",
+            country = "US",
+            timezone = "America/New_York",
+            slug = "ab" // Too short (minimum 3 characters)
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/tenants", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Slug must be at least 3 characters long");
     }
 
     #endregion
@@ -236,6 +310,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         result.GetProperty("name").GetString().Should().Be("Test Clinic");
         result.GetProperty("country").GetString().Should().Be("US");
         result.GetProperty("timezone").GetString().Should().Be("America/New_York");
+        result.GetProperty("slug").GetString().Should().Be("test-clinic");
         result.GetProperty("logoUrl").GetString().Should().Be("https://example.com/logo.png");
         result.GetProperty("isActive").GetBoolean().Should().BeTrue();
         result.GetProperty("settings").Should().NotBeNull();
@@ -271,7 +346,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
         
-        var otherTenant = new Tenant("Other Clinic", "CA", "America/Toronto");
+        var otherTenant = new Tenant("Other Clinic", "CA", "America/Toronto", "other-clinic");
         context.Tenants.Add(otherTenant);
         await context.SaveChangesAsync();
 
@@ -285,6 +360,68 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
 
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("You can only access your own tenant information");
+    }
+
+    [Fact]
+    public async Task GetTenantBySlug_WithValidSlug_ReturnsTenant()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/test-clinic");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+
+        result.GetProperty("id").GetString().Should().Be(_testTenantId);
+        result.GetProperty("name").GetString().Should().Be("Test Clinic");
+        result.GetProperty("slug").GetString().Should().Be("test-clinic");
+        result.GetProperty("isActive").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetTenantBySlug_WithInvalidSlug_ReturnsNotFound()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/non-existent-slug");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetTenantBySlug_WithInactiveSlug_ReturnsNotFound()
+    {
+        // Arrange - Create an inactive tenant
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
+        
+        var inactiveTenant = new Tenant("Inactive Test Clinic", "US", "America/New_York", "inactive-test-clinic")
+        {
+            IsActive = false
+        };
+        context.Tenants.Add(inactiveTenant);
+        await context.SaveChangesAsync();
+
+        // Act
+        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/inactive-test-clinic");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetTenantBySlug_IsPublicEndpoint_DoesNotRequireAuthentication()
+    {
+        // Arrange
+        var unauthenticatedClient = _factory.CreateClient();
+
+        // Act
+        var response = await unauthenticatedClient.GetAsync("/api/v1/tenants/by-slug/test-clinic");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     #endregion
@@ -375,6 +512,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
             name = "Updated Test Clinic",
             country = "CA",
             timezone = "America/Toronto",
+            slug = "updated-test-clinic",
             logoUrl = "https://example.com/updated-logo.png"
         };
 
@@ -390,6 +528,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         result.GetProperty("name").GetString().Should().Be("Updated Test Clinic");
         result.GetProperty("country").GetString().Should().Be("CA");
         result.GetProperty("timezone").GetString().Should().Be("America/Toronto");
+        result.GetProperty("slug").GetString().Should().Be("updated-test-clinic");
         result.GetProperty("logoUrl").GetString().Should().Be("https://example.com/updated-logo.png");
     }
 
@@ -400,13 +539,14 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
         
-        var otherTenant = new Tenant("Other Clinic", "CA", "America/Toronto");
+        var otherTenant = new Tenant("Other Clinic", "CA", "America/Toronto", "other-clinic-2");
         context.Tenants.Add(otherTenant);
         await context.SaveChangesAsync();
 
         var command = new
         {
             name = "Other Clinic", // Already exists
+            slug = "other-clinic",
             country = "CA",
             timezone = "America/Toronto"
         };
@@ -429,7 +569,8 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         {
             name = "", // Required
             country = "",
-            timezone = ""
+            timezone = "",
+            slug = "" // Required
         };
 
         // Act
@@ -448,6 +589,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         var command = new
         {
             name = "Admin Updated Clinic",
+            slug = "admin-updated-clinic",
             country = "CA",
             timezone = "America/Toronto"
         };
@@ -466,6 +608,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         var command = new
         {
             name = "Non-existent Clinic",
+            slug = "non-existent-clinic",
             country = "US",
             timezone = "America/New_York"
         };
@@ -549,6 +692,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         var tenantCommand = new
         {
             name = "Settings Test Clinic",
+            slug = "settings-test-clinic",
             country = "FR",
             timezone = "Europe/Paris"
         };
@@ -614,6 +758,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         var tenantCommand = new
         {
             name = "Invalid Settings Test Clinic",
+            slug = "invalid-test-clinic",
             country = "DE",
             timezone = "Europe/Berlin"
         };
@@ -798,8 +943,10 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
         
-        var inactiveTenant = new Tenant("Inactive Clinic", "US", "America/New_York");
-        inactiveTenant.IsActive = false;
+        var inactiveTenant = new Tenant("Inactive Clinic", "US", "America/New_York", "inactive-clinic")
+        {
+            IsActive = false
+        };
         context.Tenants.Add(inactiveTenant);
         await context.SaveChangesAsync();
 

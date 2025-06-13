@@ -622,7 +622,7 @@ public class AuthModuleIntegrationTests : IClassFixture<TestWebApplicationFactor
         var dbContext = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
 
         // Create a test tenant first
-        var tenant = new Tenant("Test Clinic", "US", "UTC");
+        var tenant = new Tenant("Test Clinic", "US", "UTC", "test-clinic");
         dbContext.Tenants.Add(tenant);
         await dbContext.SaveChangesAsync();
 

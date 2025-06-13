@@ -374,6 +374,12 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("slug");
+
                     b.Property<string>("Timezone")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -393,6 +399,10 @@ namespace Odary.Api.Migrations
                     b.HasIndex("Name")
                         .IsUnique()
                         .HasDatabaseName("ix_tenants_name");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenants_slug");
 
                     b.ToTable("tenants", (string)null);
                 });

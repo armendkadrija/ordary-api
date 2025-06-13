@@ -13,6 +13,7 @@ public static class TenantMappings
             Country = tenant.Country,
             Timezone = tenant.Timezone,
             LogoUrl = tenant.LogoUrl,
+            Slug = tenant.Slug,
             IsActive = tenant.IsActive,
             CreatedAt = tenant.CreatedAt,
             UpdatedAt = tenant.UpdatedAt
@@ -28,6 +29,24 @@ public static class TenantMappings
             Country = tenant.Country,
             Timezone = tenant.Timezone,
             LogoUrl = tenant.LogoUrl,
+            Slug = tenant.Slug,
+            IsActive = tenant.IsActive,
+            CreatedAt = tenant.CreatedAt,
+            UpdatedAt = tenant.UpdatedAt,
+            Settings = tenant.Settings?.ToContract()
+        };
+    }
+
+    public static TenantQueries.V1.GetTenantBySlug.Response ToGetTenantBySlugResponse(this Domain.Tenant tenant)
+    {
+        return new TenantQueries.V1.GetTenantBySlug.Response
+        {
+            Id = tenant.Id,
+            Name = tenant.Name,
+            Country = tenant.Country,
+            Timezone = tenant.Timezone,
+            LogoUrl = tenant.LogoUrl,
+            Slug = tenant.Slug,
             IsActive = tenant.IsActive,
             CreatedAt = tenant.CreatedAt,
             UpdatedAt = tenant.UpdatedAt,

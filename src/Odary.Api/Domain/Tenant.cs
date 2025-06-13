@@ -17,6 +17,9 @@ public class Tenant : BaseEntity, IAuditable
     [MaxLength(500)]
     public string? LogoUrl { get; set; }
     
+    [MaxLength(50)]
+    public string Slug { get; set; } = string.Empty;
+    
     public bool IsActive { get; set; }
 
     // Navigation properties
@@ -27,11 +30,12 @@ public class Tenant : BaseEntity, IAuditable
     // Parameterless constructor for EF Core
     private Tenant() { }
 
-    public Tenant(string name, string country, string timezone, string? logoUrl = null)
+    public Tenant(string name, string country, string timezone, string slug, string? logoUrl = null)
     {
         Name = name;
         Country = country;
         Timezone = timezone;
+        Slug = slug;
         LogoUrl = logoUrl;
     }
 
@@ -45,6 +49,7 @@ public class Tenant : BaseEntity, IAuditable
             [nameof(Name)] = Name,
             [nameof(Country)] = Country,
             [nameof(Timezone)] = Timezone,
+            [nameof(Slug)] = Slug,
             [nameof(LogoUrl)] = LogoUrl,
             [nameof(IsActive)] = IsActive
         };

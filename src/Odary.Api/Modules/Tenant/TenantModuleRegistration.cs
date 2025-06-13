@@ -61,6 +61,21 @@ public static class TenantModuleRegistration
         .WithSummary("Get tenant by ID")
         .Produces<TenantQueries.V1.GetTenant.Response>();
 
+        // Get tenant by slug (public endpoint for subdomain resolution)
+        tenantGroup.MapGet("/by-slug/{slug}", async (
+            string slug,
+            ITenantService tenantService,
+            CancellationToken cancellationToken) =>
+        {
+            var query = new TenantQueries.V1.GetTenantBySlug(slug);
+            var result = await tenantService.GetTenantBySlugAsync(query, cancellationToken);
+            return Results.Ok(result);
+        })
+        .AllowAnonymous()
+        .WithName("GetTenantBySlug")
+        .WithSummary("Get tenant by slug (public endpoint for subdomain resolution)")
+        .Produces<TenantQueries.V1.GetTenantBySlug.Response>();
+
         // Get tenants with pagination and filtering
         tenantGroup.MapGet("/", async (
             [AsParameters] TenantQueries.V1.GetTenants query,

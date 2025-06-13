@@ -9,6 +9,7 @@ public interface ITenantService
 {
     Task<TenantResources.V1.Tenant> CreateTenantAsync(TenantCommands.V1.CreateTenant command, CancellationToken cancellationToken = default);
     Task<TenantQueries.V1.GetTenant.Response> GetTenantAsync(TenantQueries.V1.GetTenant query, CancellationToken cancellationToken = default);
+    Task<TenantQueries.V1.GetTenantBySlug.Response> GetTenantBySlugAsync(TenantQueries.V1.GetTenantBySlug query, CancellationToken cancellationToken = default);
     Task<TenantQueries.V1.GetTenants.Response> GetTenantsAsync(TenantQueries.V1.GetTenants query, CancellationToken cancellationToken = default);
     Task<TenantResources.V1.Tenant> UpdateTenantAsync(TenantCommands.V1.UpdateTenant command, CancellationToken cancellationToken = default);
     Task DeactivateTenantAsync(TenantCommands.V1.DeactivateTenant command, CancellationToken cancellationToken = default);
@@ -38,10 +39,17 @@ public class TenantService(
         if (existingTenant != null)
             throw new BusinessException("A clinic with this name already exists");
 
+        // Check if slug is already taken
+        var existingSlug = await dbContext.Tenants
+            .FirstOrDefaultAsync(t => t.Slug == command.Slug, cancellationToken);
+        
+        if (existingSlug != null)
+            throw new BusinessException("This slug is already taken. Please choose a different one.");
+
         try
         {
             // Create tenant
-            var tenant = new Domain.Tenant(command.Name, command.Country, command.Timezone, command.LogoUrl);
+            var tenant = new Domain.Tenant(command.Name, command.Country, command.Timezone, command.Slug, command.LogoUrl);
             
             // Apply business logic - set default active state
             tenant.IsActive = true;
@@ -49,13 +57,13 @@ public class TenantService(
             dbContext.Tenants.Add(tenant);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            logger.LogInformation("Tenant created successfully with ID: {TenantId}", tenant.Id);
+            logger.LogInformation("Tenant created successfully with ID: {TenantId} and slug: {Slug}", tenant.Id, tenant.Slug);
 
             return tenant.ToContract();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create tenant: {TenantName}", command.Name);
+            logger.LogError(ex, "Failed to create tenant: {TenantName} with slug: {Slug}", command.Name, command.Slug);
             throw;
         }
     }
@@ -78,6 +86,20 @@ public class TenantService(
         return tenant.ToGetTenantResponse();
     }
 
+    public async Task<TenantQueries.V1.GetTenantBySlug.Response> GetTenantBySlugAsync(
+        TenantQueries.V1.GetTenantBySlug query,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = await dbContext.Tenants
+            .Include(t => t.Settings)
+            .FirstOrDefaultAsync(t => t.Slug == query.Slug && t.IsActive, cancellationToken);
+
+        if (tenant == null)
+            throw new NotFoundException($"Active tenant with slug '{query.Slug}' not found");
+
+        return tenant.ToGetTenantBySlugResponse();
+    }
+
     public async Task<TenantQueries.V1.GetTenants.Response> GetTenantsAsync(
         TenantQueries.V1.GetTenants query, 
         CancellationToken cancellationToken = default)
@@ -88,6 +110,11 @@ public class TenantService(
         if (!string.IsNullOrEmpty(query.Name))
         {
             tenantsQuery = tenantsQuery.Where(t => t.Name.Contains(query.Name));
+        }
+
+        if (!string.IsNullOrEmpty(query.Slug))
+        {
+            tenantsQuery = tenantsQuery.Where(t => t.Slug.Contains(query.Slug));
         }
 
         if (query.IsActive.HasValue)
@@ -134,14 +161,22 @@ public class TenantService(
         if (existingTenant != null)
             throw new BusinessException("A clinic with this name already exists");
 
+        // Check if slug is already taken by another tenant
+        var existingSlug = await dbContext.Tenants
+            .FirstOrDefaultAsync(t => t.Slug == command.Slug && t.Id != command.Id, cancellationToken);
+        
+        if (existingSlug != null)
+            throw new BusinessException("This slug is already taken. Please choose a different one.");
+
         tenant.Name = command.Name;
         tenant.Country = command.Country;
         tenant.Timezone = command.Timezone;
+        tenant.Slug = command.Slug;
         tenant.LogoUrl = command.LogoUrl;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Tenant updated successfully with ID: {TenantId}", tenant.Id);
+        logger.LogInformation("Tenant updated successfully with ID: {TenantId} and slug: {Slug}", tenant.Id, tenant.Slug);
         return tenant.ToContract();
     }
 
@@ -261,9 +296,7 @@ public class TenantService(
         return settings.ToGetTenantSettingsResponse();
     }
 
-    public async Task InviteUserAsync(
-        TenantCommands.V1.InviteUser command, 
-        CancellationToken cancellationToken = default)
+    public async Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken = default)
     {
         // Verify tenant exists
         var tenant = await dbContext.Tenants

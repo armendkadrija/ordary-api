@@ -15,6 +15,24 @@ public class TenantQueries
                 public string Country { get; init; } = string.Empty;
                 public string Timezone { get; init; } = string.Empty;
                 public string? LogoUrl { get; init; }
+                public string Slug { get; init; } = string.Empty;
+                public bool IsActive { get; init; }
+                public DateTimeOffset CreatedAt { get; init; }
+                public DateTimeOffset? UpdatedAt { get; init; }
+                public TenantSettingsResources.V1.TenantSettings? Settings { get; init; }
+            }
+        }
+
+        public record GetTenantBySlug(string Slug)
+        {
+            public record Response
+            {
+                public string Id { get; init; } = string.Empty;
+                public string Name { get; init; } = string.Empty;
+                public string Country { get; init; } = string.Empty;
+                public string Timezone { get; init; } = string.Empty;
+                public string? LogoUrl { get; init; }
+                public string Slug { get; init; } = string.Empty;
                 public bool IsActive { get; init; }
                 public DateTimeOffset CreatedAt { get; init; }
                 public DateTimeOffset? UpdatedAt { get; init; }
@@ -25,6 +43,7 @@ public class TenantQueries
         public class GetTenants : PaginatedRequest
         {
             public string? Name { get; set; }
+            public string? Slug { get; set; }
             public bool? IsActive { get; set; }
 
             public class Response : PaginatedResponse<TenantResources.V1.Tenant> { }
@@ -55,6 +74,7 @@ public class TenantCommands
             string Name,
             string Country,
             string Timezone,
+            string Slug,
             string? LogoUrl = null);
 
         public record UpdateTenant(
@@ -62,6 +82,7 @@ public class TenantCommands
             string Name,
             string Country,
             string Timezone,
+            string Slug,
             string? LogoUrl = null);
 
         public record DeactivateTenant(string Id);
@@ -100,6 +121,7 @@ public class TenantResources
             public string Country { get; init; } = string.Empty;
             public string Timezone { get; init; } = string.Empty;
             public string? LogoUrl { get; init; }
+            public string Slug { get; init; } = string.Empty;
             public bool IsActive { get; init; }
             public DateTimeOffset CreatedAt { get; init; }
             public DateTimeOffset? UpdatedAt { get; init; }
