@@ -7,7 +7,8 @@ public static class EmailModuleRegistration
         // Register email settings
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
         
-        // Register email service
+        // Register email services
+        services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
         services.AddScoped<IEmailService, EmailService>();
         
         return services;

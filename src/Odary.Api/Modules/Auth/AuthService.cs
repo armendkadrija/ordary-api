@@ -7,7 +7,6 @@ using System.Security.Claims;
 using System.Text;
 using Odary.Api.Common.Services;
 using Odary.Api.Infrastructure.Database;
-using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Modules.Auth;
 
@@ -27,7 +26,7 @@ public class AuthService(
     SignInManager<Domain.User> signInManager,
     OdaryDbContext dbContext,
     IConfiguration configuration,
-    IEmailService emailService,
+    IAuthEmailService authEmailService,
     ILogger<AuthService> logger) : IAuthService
 {
     private const int MaxFailedAttempts = 5;
@@ -173,13 +172,13 @@ public class AuthService(
         // Send password reset email with the ASP.NET Identity token
         try
         {
-            var emailCommand = new EmailCommands.V1.SendPasswordReset(
+            await authEmailService.SendPasswordResetEmailAsync(
                 command.Email,
                 user.FirstName,
                 token, // Use the ASP.NET Identity token directly
-                DateTimeOffset.UtcNow.AddHours(1)); // This should match the configured TokenLifespan
+                DateTimeOffset.UtcNow.AddHours(1), // This should match the configured TokenLifespan
+                cancellationToken);
             
-            await emailService.SendPasswordResetAsync(emailCommand, cancellationToken);
             logger.LogInformation("Password reset email sent successfully to {Email}", command.Email);
         }
         catch (Exception ex)

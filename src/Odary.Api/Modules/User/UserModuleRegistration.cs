@@ -24,6 +24,7 @@ public static class UserModuleRegistration
 
         // Register services
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserEmailService, UserEmailService>();
 
         return services;
     }

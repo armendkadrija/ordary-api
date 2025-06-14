@@ -365,7 +365,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
     public async Task GetTenantBySlug_WithValidSlug_ReturnsTenant()
     {
         // Act
-        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/test-clinic");
+        var response = await _httpClient.GetAsync("/api/v1/tenants/slug/test-clinic");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -383,7 +383,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
     public async Task GetTenantBySlug_WithInvalidSlug_ReturnsNotFound()
     {
         // Act
-        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/non-existent-slug");
+        var response = await _httpClient.GetAsync("/api/v1/tenants/slug/non-existent-slug");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -404,23 +404,10 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
         await context.SaveChangesAsync();
 
         // Act
-        var response = await _httpClient.GetAsync("/api/v1/tenants/by-slug/inactive-test-clinic");
+        var response = await _httpClient.GetAsync("/api/v1/tenants/slug/inactive-test-clinic");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task GetTenantBySlug_IsPublicEndpoint_DoesNotRequireAuthentication()
-    {
-        // Arrange
-        var unauthenticatedClient = _factory.CreateClient();
-
-        // Act
-        var response = await unauthenticatedClient.GetAsync("/api/v1/tenants/by-slug/test-clinic");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     #endregion

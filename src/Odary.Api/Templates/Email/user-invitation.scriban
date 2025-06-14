@@ -1,0 +1,26 @@
+<h2>Welcome to Odary!</h2>
+<p>Hi {{ first_name }} {{ last_name }},</p>
+<p>You've been invited to join Odary dental practice management system. We're excited to have you on board!</p>
+<p>To complete your account setup and start using Odary, please click the button below:</p>
+
+<a href="{{ invitation_link }}" class="button">Complete Account Setup</a>
+
+<div class="alert">
+    <p class="alert-text"><strong>Important:</strong> This invitation will expire on {{ format_date expires_at "MMM dd, yyyy 'at' h:mm tt" }}.</p>
+</div>
+
+<div class="divider"></div>
+
+<p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+<p class="link-text">{{ invitation_link }}</p>
+
+<p>Once you complete the setup, you'll have access to all the features of Odary including:</p>
+<ul>
+    <li><strong>Patient Management:</strong> Keep detailed patient records</li>
+    <li><strong>Appointment Scheduling:</strong> Manage your calendar efficiently</li>
+    <li><strong>Treatment Planning:</strong> Create comprehensive treatment plans</li>
+    <li><strong>Billing & Payments:</strong> Handle invoicing and payments</li>
+    <li><strong>Reporting:</strong> Generate insightful reports</li>
+</ul>
+
+<p>If you have any questions during the setup process, please contact your administrator.</p> 

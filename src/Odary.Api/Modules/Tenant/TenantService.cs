@@ -7,17 +7,17 @@ namespace Odary.Api.Modules.Tenant;
 
 public interface ITenantService
 {
-    Task<TenantResources.V1.Tenant> CreateTenantAsync(TenantCommands.V1.CreateTenant command, CancellationToken cancellationToken = default);
-    Task<TenantQueries.V1.GetTenant.Response> GetTenantAsync(TenantQueries.V1.GetTenant query, CancellationToken cancellationToken = default);
-    Task<TenantQueries.V1.GetTenantBySlug.Response> GetTenantBySlugAsync(TenantQueries.V1.GetTenantBySlug query, CancellationToken cancellationToken = default);
-    Task<TenantQueries.V1.GetTenants.Response> GetTenantsAsync(TenantQueries.V1.GetTenants query, CancellationToken cancellationToken = default);
-    Task<TenantResources.V1.Tenant> UpdateTenantAsync(TenantCommands.V1.UpdateTenant command, CancellationToken cancellationToken = default);
-    Task DeactivateTenantAsync(TenantCommands.V1.DeactivateTenant command, CancellationToken cancellationToken = default);
-    Task ActivateTenantAsync(TenantCommands.V1.ActivateTenant command, CancellationToken cancellationToken = default);
-    Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(TenantCommands.V1.CreateTenantSettings command, CancellationToken cancellationToken = default);
-    Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(TenantCommands.V1.UpdateTenantSettings command, CancellationToken cancellationToken = default);
-    Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(TenantQueries.V1.GetTenantSettings query, CancellationToken cancellationToken = default);
-    Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken = default);
+    Task<TenantResources.V1.Tenant> CreateTenantAsync(TenantCommands.V1.CreateTenant command, CancellationToken cancellationToken );
+    Task<TenantQueries.V1.GetTenant.Response> GetTenantAsync(TenantQueries.V1.GetTenant query, CancellationToken cancellationToken );
+    Task<TenantQueries.V1.GetTenantBySlug.Response> GetTenantBySlugAsync(TenantQueries.V1.GetTenantBySlug query, CancellationToken cancellationToken );
+    Task<TenantQueries.V1.GetTenants.Response> GetTenantsAsync(TenantQueries.V1.GetTenants query, CancellationToken cancellationToken );
+    Task<TenantResources.V1.Tenant> UpdateTenantAsync(TenantCommands.V1.UpdateTenant command, CancellationToken cancellationToken );
+    Task DeactivateTenantAsync(TenantCommands.V1.DeactivateTenant command, CancellationToken cancellationToken );
+    Task ActivateTenantAsync(TenantCommands.V1.ActivateTenant command, CancellationToken cancellationToken );
+    Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(TenantCommands.V1.CreateTenantSettings command, CancellationToken cancellationToken );
+    Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(TenantCommands.V1.UpdateTenantSettings command, CancellationToken cancellationToken );
+    Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(TenantQueries.V1.GetTenantSettings query, CancellationToken cancellationToken );
+    Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken );
 }
 
 public class TenantService(
@@ -28,7 +28,7 @@ public class TenantService(
 {
     public async Task<TenantResources.V1.Tenant> CreateTenantAsync(
         TenantCommands.V1.CreateTenant command, 
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -46,31 +46,23 @@ public class TenantService(
         if (existingSlug != null)
             throw new BusinessException("This slug is already taken. Please choose a different one.");
 
-        try
+        // Create tenant
+        var tenant = new Domain.Tenant(command.Name, command.Country, command.Timezone, command.Slug, command.LogoUrl)
         {
-            // Create tenant
-            var tenant = new Domain.Tenant(command.Name, command.Country, command.Timezone, command.Slug, command.LogoUrl);
-            
-            // Apply business logic - set default active state
-            tenant.IsActive = true;
-            
-            dbContext.Tenants.Add(tenant);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            IsActive = true
+        };
 
-            logger.LogInformation("Tenant created successfully with ID: {TenantId} and slug: {Slug}", tenant.Id, tenant.Slug);
+        dbContext.Tenants.Add(tenant);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-            return tenant.ToContract();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to create tenant: {TenantName} with slug: {Slug}", command.Name, command.Slug);
-            throw;
-        }
+        logger.LogInformation("Tenant created successfully with ID: {TenantId} and slug: {Slug}", tenant.Id, tenant.Slug);
+
+        return tenant.ToContract();
     }
 
     public async Task<TenantQueries.V1.GetTenant.Response> GetTenantAsync(
         TenantQueries.V1.GetTenant query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         // Admin users can only access their own tenant information
         if (CurrentUser.IsAdmin && query.Id != CurrentUser.TenantId)
@@ -88,7 +80,7 @@ public class TenantService(
 
     public async Task<TenantQueries.V1.GetTenantBySlug.Response> GetTenantBySlugAsync(
         TenantQueries.V1.GetTenantBySlug query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         var tenant = await dbContext.Tenants
             .Include(t => t.Settings)
@@ -96,31 +88,28 @@ public class TenantService(
 
         if (tenant == null)
             throw new NotFoundException($"Active tenant with slug '{query.Slug}' not found");
+        
+        if (CurrentUser.IsAdmin && tenant.Id != CurrentUser.TenantId)
+            throw new BusinessException("You can only access your own tenant information");
 
         return tenant.ToGetTenantBySlugResponse();
     }
 
     public async Task<TenantQueries.V1.GetTenants.Response> GetTenantsAsync(
         TenantQueries.V1.GetTenants query, 
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         var tenantsQuery = dbContext.Tenants.AsQueryable();
 
         // Apply filters
         if (!string.IsNullOrEmpty(query.Name))
-        {
             tenantsQuery = tenantsQuery.Where(t => t.Name.Contains(query.Name));
-        }
 
         if (!string.IsNullOrEmpty(query.Slug))
-        {
             tenantsQuery = tenantsQuery.Where(t => t.Slug.Contains(query.Slug));
-        }
 
         if (query.IsActive.HasValue)
-        {
             tenantsQuery = tenantsQuery.Where(t => t.IsActive == query.IsActive.Value);
-        }
 
         var totalCount = await tenantsQuery.CountAsync(cancellationToken);
 
@@ -140,7 +129,7 @@ public class TenantService(
 
     public async Task<TenantResources.V1.Tenant> UpdateTenantAsync(
         TenantCommands.V1.UpdateTenant command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -182,7 +171,7 @@ public class TenantService(
 
     public async Task DeactivateTenantAsync(
         TenantCommands.V1.DeactivateTenant command, 
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         var tenant = await dbContext.Tenants
             .FirstOrDefaultAsync(t => t.Id == command.Id, cancellationToken);
@@ -198,7 +187,7 @@ public class TenantService(
 
     public async Task ActivateTenantAsync(
         TenantCommands.V1.ActivateTenant command, 
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         var tenant = await dbContext.Tenants
             .FirstOrDefaultAsync(t => t.Id == command.Id, cancellationToken);
@@ -214,7 +203,7 @@ public class TenantService(
 
     public async Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(
         TenantCommands.V1.CreateTenantSettings command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -254,7 +243,7 @@ public class TenantService(
 
     public async Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(
         TenantCommands.V1.UpdateTenantSettings command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -281,7 +270,7 @@ public class TenantService(
 
     public async Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(
         TenantQueries.V1.GetTenantSettings query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken )
     {
         // Admin users can only access their own tenant settings
         if (CurrentUser.IsAdmin && query.TenantId != CurrentUser.TenantId)
@@ -296,8 +285,12 @@ public class TenantService(
         return settings.ToGetTenantSettingsResponse();
     }
 
-    public async Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken = default)
+    public async Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken )
     {
+        // Admin users can only access their own tenant settings
+        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
+            throw new BusinessException("You can only access your own tenant settings");
+        
         // Verify tenant exists
         var tenant = await dbContext.Tenants
             .FirstOrDefaultAsync(t => t.Id == command.TenantId && t.IsActive, cancellationToken);

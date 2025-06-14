@@ -24,6 +24,7 @@ public static class AuthModuleRegistration
 
         // Register services
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAuthEmailService, AuthEmailService>();
 
         return services;
     }

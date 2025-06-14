@@ -62,7 +62,7 @@ public static class TenantModuleRegistration
         .Produces<TenantQueries.V1.GetTenant.Response>();
 
         // Get tenant by slug (public endpoint for subdomain resolution)
-        tenantGroup.MapGet("/by-slug/{slug}", async (
+        tenantGroup.MapGet("/slug/{slug}", async (
             string slug,
             ITenantService tenantService,
             CancellationToken cancellationToken) =>
@@ -71,7 +71,7 @@ public static class TenantModuleRegistration
             var result = await tenantService.GetTenantBySlugAsync(query, cancellationToken);
             return Results.Ok(result);
         })
-        .AllowAnonymous()
+        .WithClaim(TenantClaims.Read)
         .WithName("GetTenantBySlug")
         .WithSummary("Get tenant by slug (public endpoint for subdomain resolution)")
         .Produces<TenantQueries.V1.GetTenantBySlug.Response>();

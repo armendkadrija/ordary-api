@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
 using Odary.Api.Infrastructure.Database;
-using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Modules.User;
 
@@ -27,7 +26,7 @@ public class UserService(
     OdaryDbContext dbContext,
     ILogger<UserService> logger,
     ICurrentUserService currentUserService,
-    IEmailService emailService) : BaseService(currentUserService), IUserService
+    IUserEmailService userEmailService) : BaseService(currentUserService), IUserService
 {
     private const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
 
@@ -235,14 +234,14 @@ public class UserService(
         // Send invitation email
         try
         {
-            var emailCommand = new EmailCommands.V1.SendUserInvitation(
+            await userEmailService.SendUserInvitationEmailAsync(
                 command.Email,
                 command.FirstName,
                 command.LastName,
                 $"{user.Id}|{invitationToken}",
-                expiresAt);
+                expiresAt,
+                cancellationToken);
             
-            await emailService.SendUserInvitationAsync(emailCommand);
             logger.LogInformation("Invitation email sent successfully to {Email}", command.Email);
         }
         catch (Exception ex)
