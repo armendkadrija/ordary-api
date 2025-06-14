@@ -36,6 +36,7 @@ public class UserCommands
     {
         public record CreateUser(string Email, string TenantId, string Role);
         public record InviteUser(string Email, string FirstName, string LastName, string Role, string TenantId);
+        public record OnboardUser(string Email, string Token, string FirstName, string LastName, string Password);
         public record UpdateEmail(string Id, string Email);
         public record DeleteUser(string Id);
         public record UpdateUserProfile(string Id, string FirstName, string LastName, string Role, bool IsActive);
@@ -85,12 +86,10 @@ public class UserResources
             public DateTimeOffset CreatedAt { get; init; }
         }
 
-        public record InvitationResponse
+        public record OnboardingResponse
         {
-            public string Id { get; init; } = string.Empty;
-            public string Email { get; init; } = string.Empty;
-            public string InvitationToken { get; init; } = string.Empty;
-            public DateTime ExpiresAt { get; init; }
+            public bool Success { get; init; } = true;
+            public string Message { get; init; } = "User onboarding completed successfully";
         }
     }
 } 

@@ -492,14 +492,14 @@ public class UserModuleIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task InviteUser_WithValidData_ReturnsInvitationResponse()
     {
-        // Arrange - Use proper GUID format for tenant ID
+        // Arrange
         var command = new
         {
             email = "invite@example.com",
             firstName = "Invited",
             lastName = "User",
             role = Roles.ASSISTANT,
-            tenantId = _testTenantId // Use actual tenant ID
+            tenantId = _testTenantId
         };
 
         // Act
@@ -511,10 +511,15 @@ public class UserModuleIntegrationTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
 
-        result.GetProperty("id").GetString().Should().NotBeNullOrEmpty();
-        result.GetProperty("email").GetString().Should().Be("invite@example.com");
-        result.GetProperty("invitationToken").GetString().Should().NotBeNullOrEmpty();
-        result.GetProperty("expiresAt").GetString().Should().NotBeNullOrEmpty();
+        result.GetProperty("message").GetString().Should().Be("Invitation sent successfully");
+
+        // Verify invitation email was sent via mock service
+        var sentInvitation = _factory.MockUserEmailService.SentInvitations.Should().ContainSingle().Subject;
+        sentInvitation.Email.Should().Be("invite@example.com");
+        sentInvitation.FirstName.Should().Be("Invited");
+        sentInvitation.LastName.Should().Be("User");
+        sentInvitation.InvitationToken.Should().NotBeNullOrEmpty();
+        sentInvitation.ExpiresAt.Should().BeAfter(DateTimeOffset.UtcNow);
     }
 
     [Fact]
@@ -748,6 +753,136 @@ public class UserModuleIntegrationTests : IAsyncLifetime
 
         var getUserResponse = await _httpClient.GetAsync($"/api/v1/users/{_testUserId}");
         getUserResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    #endregion
+
+    #region Onboard User Tests
+
+    [Fact]
+    public async Task OnboardUser_WithValidToken_ReturnsOnboardingResponse()
+    {
+        // Arrange - First create an invitation
+        var inviteCommand = new
+        {
+            email = "onboard@example.com",
+            firstName = "Onboard",
+            lastName = "User",
+            role = Roles.ASSISTANT,
+            tenantId = _testTenantId
+        };
+
+        var inviteResponse = await _httpClient.PostAsJsonAsync("/api/v1/users/invite", inviteCommand);
+        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var inviteContent = await inviteResponse.Content.ReadAsStringAsync();
+        var inviteResult = JsonSerializer.Deserialize<JsonElement>(inviteContent, _jsonOptions);
+        inviteResult.GetProperty("message").GetString().Should().Be("Invitation sent successfully");
+
+        // Get the invitation token from the mock email service
+        var sentInvitation = _factory.MockUserEmailService.SentInvitations.Should().ContainSingle().Subject;
+        sentInvitation.Email.Should().Be("onboard@example.com");
+        sentInvitation.FirstName.Should().Be("Onboard");
+        sentInvitation.LastName.Should().Be("User");
+
+        // Act - Now onboard the user
+        var onboardCommand = new
+        {
+            email = "onboard@example.com",
+            token = sentInvitation.InvitationToken,
+            firstName = "Updated",
+            lastName = "Name",
+            password = "NewPassword123!"
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+
+        result.GetProperty("success").GetBoolean().Should().BeTrue();
+        result.GetProperty("message").GetString().Should().Be("User onboarding completed successfully");
+
+        // Verify onboarding completion email was sent
+        var onboardingEmail = _factory.MockUserEmailService.SentOnboardingEmails.Should().ContainSingle().Subject;
+        onboardingEmail.Email.Should().Be("onboard@example.com");
+        onboardingEmail.FirstName.Should().Be("Updated");
+        onboardingEmail.LastName.Should().Be("Name");
+        onboardingEmail.Role.Should().Be(Roles.ASSISTANT);
+    }
+
+    [Fact]
+    public async Task OnboardUser_WithInvalidToken_ReturnsBadRequest()
+    {
+        // Act
+        var onboardCommand = new
+        {
+            email = "", // Invalid email
+            token = "", // Invalid token
+            firstName = "", // Invalid first name
+            lastName = "", // Invalid last name
+            password = "123" // Invalid password
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Email is required");
+        content.Should().Contain("Token is required");
+        content.Should().Contain("First name is required");
+        content.Should().Contain("Last name is required");
+        content.Should().Contain("Password must be at least 8 characters long");
+    }
+
+    [Fact]
+    public async Task OnboardUser_WithWeakPassword_ReturnsBadRequest()
+    {
+        // Arrange
+        var command = new
+        {
+            email = "test@example.com",
+            token = "some-token",
+            firstName = "Test",
+            lastName = "User",
+            password = "weak"
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Password must be at least 8 characters long");
+    }
+
+    [Fact]
+    public async Task OnboardUser_WithInvalidEmailOrToken_ReturnsBadRequest()
+    {
+        // Act
+        var onboardCommand = new
+        {
+            email = "nonexistent@example.com",
+            token = "invalid-token",
+            firstName = "Test",
+            lastName = "User",
+            password = "Password123!"
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Invalid email or token");
     }
 
     #endregion

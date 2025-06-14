@@ -6,6 +6,10 @@ public class ResetPasswordValidator : AbstractValidator<AuthCommands.V1.ResetPas
 {
     public ResetPasswordValidator()
     {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email is required")
+            .EmailAddress().WithMessage("Valid email address is required");
+
         RuleFor(x => x.Token)
             .NotEmpty()
             .WithMessage("Reset token is required");

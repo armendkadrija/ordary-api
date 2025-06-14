@@ -193,44 +193,32 @@ public class AuthService(
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
-        // Find user by trying to verify the token
-        // This approach iterates through users to find the one the token belongs to
-        Domain.User? targetUser = null;
-        
-        // Get all users from database and try to verify token for each
-        var allUsers = await dbContext.Users.ToListAsync(cancellationToken);
-        
-        foreach (var user in allUsers)
-        {
-            var isValidToken = await userManager.VerifyUserTokenAsync(
-                user,
-                "Default",
-                "ResetPassword",
-                command.Token);
+        // Find user directly by email - much more efficient than iteration
+        var user = await userManager.FindByEmailAsync(command.Email);
+        if (user == null)
+            throw new BusinessException("Invalid email or token");
 
-            if (isValidToken)
-            {
-                targetUser = user;
-                break;
-            }
-        }
+        // Verify the token is valid for this user
+        var isValidToken = await userManager.VerifyUserTokenAsync(
+            user,
+            "Default",
+            "ResetPassword",
+            command.Token);
 
-        if (targetUser == null)
+        if (!isValidToken)
             throw new BusinessException("Invalid or expired reset token");
 
         // Reset password using ASP.NET Identity's built-in method
-        var result = await userManager.ResetPasswordAsync(targetUser, command.Token, command.NewPassword);
+        var result = await userManager.ResetPasswordAsync(user, command.Token, command.NewPassword);
         if (!result.Succeeded)
             throw new BusinessException(string.Join(", ", result.Errors.Select(e => e.Description)));
 
         // Clear failed attempts
-        targetUser.FailedLoginAttempts = 0;
-        targetUser.LockedUntil = null;
-        await userManager.UpdateAsync(targetUser);
+        user.FailedLoginAttempts = 0;
+        user.LockedUntil = null;
+        await userManager.UpdateAsync(user);
 
-
-
-        logger.LogInformation("Password reset successfully for user: {Email}", targetUser.Email);
+        logger.LogInformation("Password reset successfully for user: {Email}", user.Email);
     }
 
     public async Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken)

@@ -14,7 +14,8 @@ public interface IUserService
     Task<UserResources.V1.User> UpdateEmailAsync(UserCommands.V1.UpdateEmail command, CancellationToken cancellationToken);
     Task DeleteUserAsync(UserCommands.V1.DeleteUser command, CancellationToken cancellationToken);
 
-    Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken);
+    Task<string> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken);
+    Task<UserResources.V1.OnboardingResponse> OnboardUserAsync(UserCommands.V1.OnboardUser command, CancellationToken cancellationToken);
     Task<UserResources.V1.UserProfile> UpdateUserProfileAsync(UserCommands.V1.UpdateUserProfile command, CancellationToken cancellationToken);
     Task LockUserAsync(UserCommands.V1.LockUser command);
     Task UnlockUserAsync(UserCommands.V1.UnlockUser command);
@@ -169,7 +170,7 @@ public class UserService(
 
     // User management methods moved from AuthService
 
-    public async Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken)
+    public async Task<string> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -206,10 +207,10 @@ public class UserService(
                 command.Email,
                 command.FirstName,
                 command.LastName,
-                $"{user.Id}|{invitationToken}",
+                invitationToken,
                 expiresAt,
                 cancellationToken);
-
+            
             logger.LogInformation("Invitation email sent successfully to {Email}", command.Email);
         }
         catch (Exception ex)
@@ -218,13 +219,71 @@ public class UserService(
         }
 
         logger.LogInformation("User invitation created successfully with ID: {UserId} in Tenant: {TenantId}", user.Id, command.TenantId);
+        
+        return "Invitation sent successfully";
+    }
 
-        return new UserResources.V1.InvitationResponse
+    public async Task<UserResources.V1.OnboardingResponse> OnboardUserAsync(UserCommands.V1.OnboardUser command, CancellationToken cancellationToken)
+    {
+        await validationService.ValidateAsync(command, cancellationToken);
+
+        // Find user directly by email - much more efficient than iteration
+        var user = await userManager.FindByEmailAsync(command.Email);
+        if (user == null)
+            throw new BusinessException("Invalid email or token");
+
+        // Verify the user is inactive (invited but not onboarded)
+        if (user.IsActive)
+            throw new BusinessException("User has already been onboarded");
+
+        // Verify the token is valid for this user
+        var isValidToken = await userManager.VerifyUserTokenAsync(
+            user,
+            "Default",
+            "ResetPassword",
+            command.Token);
+
+        if (!isValidToken)
+            throw new BusinessException("Invalid or expired token");
+
+        // Update user profile
+        user.FirstName = command.FirstName;
+        user.LastName = command.LastName;
+        user.IsActive = true;
+
+        // Set the password using the reset token
+        var passwordResult = await userManager.ResetPasswordAsync(user, command.Token, command.Password);
+        if (!passwordResult.Succeeded)
+            throw new BusinessException(string.Join(", ", passwordResult.Errors.Select(e => e.Description)));
+
+        // Update the user
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            throw new BusinessException(string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+
+        // Send onboarding completion email
+        try
         {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            InvitationToken = $"{user.Id}|{invitationToken}",
-            ExpiresAt = expiresAt.DateTime
+            await userEmailService.SendOnboardingCompleteEmailAsync(
+                user.Email ?? string.Empty,
+                user.FirstName,
+                user.LastName,
+                user.Role,
+                cancellationToken);
+            
+            logger.LogInformation("Onboarding completion email sent successfully to {Email}", user.Email);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send onboarding completion email to {Email}", user.Email);
+        }
+
+        logger.LogInformation("User onboarded successfully with ID: {UserId}", user.Id);
+
+        return new UserResources.V1.OnboardingResponse
+        {
+            Success = true,
+            Message = "User onboarding completed successfully"
         };
     }
 

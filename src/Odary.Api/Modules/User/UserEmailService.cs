@@ -7,6 +7,7 @@ namespace Odary.Api.Modules.User;
 public interface IUserEmailService
 {
     Task SendUserInvitationEmailAsync(string email, string firstName, string lastName, string invitationToken, DateTimeOffset expiresAt, CancellationToken cancellationToken = default);
+    Task SendOnboardingCompleteEmailAsync(string email, string firstName, string lastName, string role, CancellationToken cancellationToken = default);
 }
 
 public class UserEmailService(IEmailService emailService, IOptions<EmailSettings> emailOptions) : IUserEmailService
@@ -22,7 +23,7 @@ public class UserEmailService(IEmailService emailService, IOptions<EmailSettings
         var encodedEmail = HttpUtility.UrlEncode(email);
         var encodedToken = HttpUtility.UrlEncode(invitationToken);
         
-        // Build the invitation link with email and token as parameters
+        // Build the invitation link with email and token as separate parameters
         var invitationLink = $"{_emailSettings.FrontendUrl}/accept-invitation?email={encodedEmail}&token={encodedToken}";
         
         var model = new
@@ -34,5 +35,22 @@ public class UserEmailService(IEmailService emailService, IOptions<EmailSettings
         };
         
         await emailService.SendTemplateEmailAsync(email, subject, "user-invitation", model, toName, cancellationToken);
+    }
+
+    public async Task SendOnboardingCompleteEmailAsync(string email, string firstName, string lastName, string role, CancellationToken cancellationToken = default)
+    {
+        var subject = "Welcome to Odary - Onboarding Complete";
+        var toName = $"{firstName} {lastName}".Trim();
+        
+        var model = new
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            Role = role,
+            LoginUrl = $"{_emailSettings.FrontendUrl}/login"
+        };
+        
+        await emailService.SendTemplateEmailAsync(email, subject, "onboarding-complete", model, toName, cancellationToken);
     }
 } 

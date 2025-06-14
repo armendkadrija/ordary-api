@@ -21,7 +21,7 @@ public class AuthEmailService(IEmailService emailService, IOptions<EmailSettings
         var encodedEmail = HttpUtility.UrlEncode(email);
         var encodedToken = HttpUtility.UrlEncode(resetToken);
         
-        // Build the reset password link with email and token as parameters
+        // Build the reset password link with email and token as separate parameters
         var resetLink = $"{_emailSettings.FrontendUrl}/reset-password?email={encodedEmail}&token={encodedToken}";
         
         var model = new

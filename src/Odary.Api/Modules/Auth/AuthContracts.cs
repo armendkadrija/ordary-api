@@ -28,7 +28,7 @@ public class AuthCommands
         public record SignIn(string Email, string Password, bool RememberMe = false);
         public record RefreshToken(string Token);
         public record ForgotPassword(string Email);
-        public record ResetPassword(string Token, string NewPassword);
+        public record ResetPassword(string Email, string Token, string NewPassword);
         public record ChangePassword(string CurrentPassword, string NewPassword);
 
     }

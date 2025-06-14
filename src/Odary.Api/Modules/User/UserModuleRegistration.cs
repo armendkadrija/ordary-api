@@ -20,6 +20,7 @@ public static class UserModuleRegistration
         
         // User management validators moved from Auth module
         services.AddScoped<IValidator<UserCommands.V1.InviteUser>, InviteUserValidator>();
+        services.AddScoped<IValidator<UserCommands.V1.OnboardUser>, OnboardUserValidator>();
         services.AddScoped<IValidator<UserCommands.V1.UpdateUserProfile>, UpdateUserProfileValidator>();
 
         // Register services
@@ -119,12 +120,26 @@ public static class UserModuleRegistration
             CancellationToken cancellationToken) =>
         {
             var result = await userService.InviteUserAsync(command, cancellationToken);
-            return Results.Ok(result);
+            return Results.Ok(new { message = result });
         })
         .WithClaim(UserClaims.Invite)
         .WithName("InviteUser")
         .WithSummary("Invite a new user")
-        .Produces<UserResources.V1.InvitationResponse>()
+        .Produces<object>()
+        .ProducesValidationProblem();
+
+        userGroup.MapPost("/onboard", async (
+            [FromBody] UserCommands.V1.OnboardUser command,
+            IUserService userService,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await userService.OnboardUserAsync(command, cancellationToken);
+            return Results.Ok(result);
+        })
+        .AllowAnonymous()
+        .WithName("OnboardUser")
+        .WithSummary("Complete user onboarding with invitation token")
+        .Produces<UserResources.V1.OnboardingResponse>()
         .ProducesValidationProblem();
 
         userGroup.MapPut("/profiles/{id}", async (
