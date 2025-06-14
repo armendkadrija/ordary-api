@@ -42,7 +42,7 @@ public static class UserModuleRegistration
             var result = await userService.CreateUserAsync(command, cancellationToken);
             return Results.Created($"/api/v1/users/{result.Id}", result);
         })
-        .WithClaim(UserClaims.Create)
+        .RequireSuperAdmin()
         .WithName("CreateUser")
         .WithSummary("Create a new user with specified role and generated password")
         .Produces<UserResources.V1.CreateUserResponse>(StatusCodes.Status201Created)
@@ -152,7 +152,7 @@ public static class UserModuleRegistration
             CancellationToken cancellationToken) =>
         {
             var command = new UserCommands.V1.LockUser(id);
-            await userService.LockUserAsync(command, cancellationToken);
+            await userService.LockUserAsync(command);
             return Results.NoContent();
         })
         .WithClaim(UserClaims.Update)
@@ -167,7 +167,7 @@ public static class UserModuleRegistration
             CancellationToken cancellationToken) =>
         {
             var command = new UserCommands.V1.UnlockUser(id);
-            await userService.UnlockUserAsync(command, cancellationToken);
+            await userService.UnlockUserAsync(command);
             return Results.NoContent();
         })
         .WithClaim(UserClaims.Update)

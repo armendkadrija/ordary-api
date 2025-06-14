@@ -8,16 +8,16 @@ namespace Odary.Api.Modules.User;
 
 public interface IUserService
 {
-    Task<UserResources.V1.CreateUserResponse> CreateUserAsync(UserCommands.V1.CreateUser command, CancellationToken cancellationToken = default);
-    Task<UserQueries.V1.GetUser.Response> GetUserAsync(UserQueries.V1.GetUser query, CancellationToken cancellationToken = default);
-    Task<UserQueries.V1.GetUsers.Response> GetUsersAsync(UserQueries.V1.GetUsers query, CancellationToken cancellationToken = default);
-    Task<UserResources.V1.User> UpdateEmailAsync(UserCommands.V1.UpdateEmail command, CancellationToken cancellationToken = default);
-    Task DeleteUserAsync(UserCommands.V1.DeleteUser command, CancellationToken cancellationToken = default);
+    Task<UserResources.V1.CreateUserResponse> CreateUserAsync(UserCommands.V1.CreateUser command, CancellationToken cancellationToken);
+    Task<UserQueries.V1.GetUser.Response> GetUserAsync(UserQueries.V1.GetUser query, CancellationToken cancellationToken);
+    Task<UserQueries.V1.GetUsers.Response> GetUsersAsync(UserQueries.V1.GetUsers query, CancellationToken cancellationToken);
+    Task<UserResources.V1.User> UpdateEmailAsync(UserCommands.V1.UpdateEmail command, CancellationToken cancellationToken);
+    Task DeleteUserAsync(UserCommands.V1.DeleteUser command, CancellationToken cancellationToken);
 
-    Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken = default);
-    Task<UserResources.V1.UserProfile> UpdateUserProfileAsync(UserCommands.V1.UpdateUserProfile command, CancellationToken cancellationToken = default);
-    Task LockUserAsync(UserCommands.V1.LockUser command, CancellationToken cancellationToken = default);
-    Task UnlockUserAsync(UserCommands.V1.UnlockUser command, CancellationToken cancellationToken = default);
+    Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken);
+    Task<UserResources.V1.UserProfile> UpdateUserProfileAsync(UserCommands.V1.UpdateUserProfile command, CancellationToken cancellationToken);
+    Task LockUserAsync(UserCommands.V1.LockUser command);
+    Task UnlockUserAsync(UserCommands.V1.UnlockUser command);
 }
 
 public class UserService(
@@ -28,22 +28,16 @@ public class UserService(
     ICurrentUserService currentUserService,
     IUserEmailService userEmailService) : BaseService(currentUserService), IUserService
 {
-    private const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-
     public async Task<UserResources.V1.CreateUserResponse> CreateUserAsync(
         UserCommands.V1.CreateUser command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
-
-        // Validate tenant access for Admin users (can only create users in their own tenant)
-        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
-            throw new BusinessException("You can only create users within your own tenant");
-
+        
         // Validate that the specified tenant exists
         var tenantExists = await dbContext.Tenants
             .AnyAsync(t => t.Id == command.TenantId, cancellationToken);
-        
+
         if (!tenantExists)
             throw new BusinessException($"Tenant with ID {command.TenantId} not found");
 
@@ -57,23 +51,22 @@ public class UserService(
 
         // Create user with UserManager (proper Identity way)
         var user = new Domain.User(
-            command.TenantId, 
-            command.Email, 
+            command.TenantId,
+            command.Email,
             command.Email.Split('@')[0], // Default first name from email prefix
-            "",                         // Default empty last name
-            command.Role                // Use role from command
-        );
-        
-        // Apply business logic - set default active state
-        user.IsActive = true;
-        
-        // Use UserManager to create user with generated password
+            "", // Default empty last name
+            command.Role // Use role from command
+        )
+        {
+            IsActive = true
+        };
+
         var result = await userManager.CreateAsync(user, generatedPassword);
         if (!result.Succeeded)
             throw new BusinessException(string.Join(", ", result.Errors.Select(e => e.Description)));
 
         logger.LogInformation("User created successfully with ID: {UserId} in Tenant: {TenantId}", user.Id, command.TenantId);
-        
+
         return new UserResources.V1.CreateUserResponse
         {
             Id = user.Id,
@@ -90,43 +83,28 @@ public class UserService(
 
     public async Task<UserQueries.V1.GetUser.Response> GetUserAsync(
         UserQueries.V1.GetUser query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Id == query.Id && u.TenantId == CurrentUser.TenantId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == query.Id, cancellationToken);
 
-        if (user == null)
-            throw new NotFoundException($"User with ID {query.Id} not found in your tenant");
-
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantAccess(user.TenantId, "user");
+        if (user == null || !HasTenantAccess(user.TenantId))
+            throw new NotFoundException($"User with ID {query.Id} not found!");
 
         return user.ToGetUserResponse();
     }
 
     public async Task<UserQueries.V1.GetUsers.Response> GetUsersAsync(
         UserQueries.V1.GetUsers query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        // Filter users based on user role
         var usersQuery = dbContext.Users.AsQueryable();
-        
-        // SuperAdmins can see all users, Admins can only see users in their tenant
-        if (!CurrentUser.IsSuperAdmin)
-        {
-            var currentUserTenantId = CurrentUser.TenantId; // This can now be null for SuperAdmin
-            if (currentUserTenantId != null)
-            {
-                usersQuery = usersQuery.Where(u => u.TenantId == currentUserTenantId);
-            }
-        }
 
-        // Apply additional filters
+        if (CurrentUser.IsAdmin)
+            usersQuery = usersQuery.Where(u => u.TenantId == CurrentUser.TenantId);
+
         if (!string.IsNullOrEmpty(query.Email))
-        {
             usersQuery = usersQuery.Where(u => u.Email != null && u.Email.Contains(query.Email));
-        }
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
 
@@ -146,24 +124,20 @@ public class UserService(
 
     public async Task<UserResources.V1.User> UpdateEmailAsync(
         UserCommands.V1.UpdateEmail command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Id == command.Id && u.TenantId == CurrentUser.TenantId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == command.Id, cancellationToken);
 
-        if (user == null)
-            throw new NotFoundException($"User with ID {command.Id} not found in your tenant");
-
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantModification(user.TenantId, "update", "user");
+        if (user == null || !HasTenantAccess(user.TenantId))
+            throw new NotFoundException($"User with ID {command.Id} not found!");
 
         // Check if email is already taken by another user within the same tenant
         var existingUser = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == command.Email && u.Id != command.Id && u.TenantId == CurrentUser.TenantId, cancellationToken);
-        
+
         if (existingUser != null)
             throw new BusinessException("Email is already taken by another user in your tenant");
 
@@ -176,21 +150,16 @@ public class UserService(
 
     public async Task DeleteUserAsync(
         UserCommands.V1.DeleteUser command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Id == command.Id && (CurrentUser.IsSuperAdmin || u.TenantId == CurrentUser.TenantId), cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == command.Id, cancellationToken);
 
-        if (user == null)
+        if (user == null || !HasTenantAccess(user.TenantId))
             throw new NotFoundException($"User with ID {command.Id} not found in your tenant");
 
         if (user.Id == CurrentUser.UserId)
             throw new BusinessException("Cannot delete your own account");
-
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantModification(user.TenantId, "delete", "user");
 
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -200,18 +169,18 @@ public class UserService(
 
     // User management methods moved from AuthService
 
-    public async Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken = default)
+    public async Task<UserResources.V1.InvitationResponse> InviteUserAsync(UserCommands.V1.InviteUser command, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
         // Validate tenant access for Admin users (SuperAdmins can invite to any tenant)
-        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
+        if (!HasTenantAccess(command.TenantId))
             throw new BusinessException("You can only invite users to your own tenant");
 
         // Validate that the specified tenant exists
         var tenantExists = await dbContext.Tenants
             .AnyAsync(t => t.Id == command.TenantId, cancellationToken);
-        
+
         if (!tenantExists)
             throw new BusinessException($"Tenant with ID {command.TenantId} not found");
 
@@ -221,7 +190,7 @@ public class UserService(
 
         var user = new Domain.User(command.TenantId, command.Email, command.FirstName, command.LastName, command.Role)
         {
-            IsActive = false // User needs to complete invitation
+            IsActive = false
         };
 
         var result = await userManager.CreateAsync(user);
@@ -231,7 +200,6 @@ public class UserService(
         var invitationToken = await userManager.GeneratePasswordResetTokenAsync(user);
         var expiresAt = DateTimeOffset.UtcNow.AddDays(1);
 
-        // Send invitation email
         try
         {
             await userEmailService.SendUserInvitationEmailAsync(
@@ -241,7 +209,7 @@ public class UserService(
                 $"{user.Id}|{invitationToken}",
                 expiresAt,
                 cancellationToken);
-            
+
             logger.LogInformation("Invitation email sent successfully to {Email}", command.Email);
         }
         catch (Exception ex)
@@ -250,7 +218,7 @@ public class UserService(
         }
 
         logger.LogInformation("User invitation created successfully with ID: {UserId} in Tenant: {TenantId}", user.Id, command.TenantId);
-        
+
         return new UserResources.V1.InvitationResponse
         {
             Id = user.Id,
@@ -260,17 +228,14 @@ public class UserService(
         };
     }
 
-    public async Task<UserResources.V1.UserProfile> UpdateUserProfileAsync(UserCommands.V1.UpdateUserProfile command, CancellationToken cancellationToken = default)
+    public async Task<UserResources.V1.UserProfile> UpdateUserProfileAsync(UserCommands.V1.UpdateUserProfile command, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
         var user = await userManager.FindByIdAsync(command.Id);
-        if (user == null)
+        
+        if (user == null || !HasTenantAccess(user.TenantId))
             throw new NotFoundException("User not found");
-
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantModification(user.TenantId, "update", "user profile");
 
         user.FirstName = command.FirstName;
         user.LastName = command.LastName;
@@ -286,35 +251,26 @@ public class UserService(
     }
 
 
-
-    public async Task LockUserAsync(UserCommands.V1.LockUser command, CancellationToken cancellationToken = default)
+    public async Task LockUserAsync(UserCommands.V1.LockUser command)
     {
         var user = await userManager.FindByIdAsync(command.Id);
-        if (user == null)
+        if (user == null || !HasTenantAccess(user.TenantId))
             throw new NotFoundException("User not found");
 
         if (user.Id == CurrentUser.UserId)
             throw new BusinessException("Cannot lock your own account");
 
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantModification(user.TenantId, "lock", "user");
-
-        user.LockedUntil = DateTime.UtcNow.AddYears(1); // Lock indefinitely
+        user.LockedUntil = DateTime.UtcNow.AddYears(1000);
         await userManager.UpdateAsync(user);
 
         logger.LogInformation("User locked successfully with ID: {UserId}", user.Id);
     }
 
-    public async Task UnlockUserAsync(UserCommands.V1.UnlockUser command, CancellationToken cancellationToken = default)
+    public async Task UnlockUserAsync(UserCommands.V1.UnlockUser command)
     {
         var user = await userManager.FindByIdAsync(command.Id);
-        if (user == null)
+        if (user == null || !HasTenantAccess(user.TenantId))
             throw new NotFoundException("User not found");
-
-        // Validate tenant access for Admin users
-        if (user.TenantId != null)
-            ValidateTenantModification(user.TenantId, "unlock", "user");
 
         user.LockedUntil = null;
         user.FailedLoginAttempts = 0;
@@ -323,37 +279,5 @@ public class UserService(
         logger.LogInformation("User unlocked successfully with ID: {UserId}", user.Id);
     }
 
-    private static string GenerateTemporaryPassword()
-    {
-        const string lowercase = "abcdefghijklmnopqrstuvwxyz";
-        const string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const string digits = "0123456789";
-        const string special = "!@#$%^&*";
-        
-        var random = new Random();
-        var password = new List<char>
-        {
-            // Ensure at least one character from each required category
-            lowercase[random.Next(lowercase.Length)],
-            uppercase[random.Next(uppercase.Length)],
-            digits[random.Next(digits.Length)],
-            special[random.Next(special.Length)]
-        };
-        
-        // Fill the rest with random characters from all categories
-        const string allChars = lowercase + uppercase + digits + special;
-        for (int i = 4; i < 12; i++)
-        {
-            password.Add(allChars[random.Next(allChars.Length)]);
-        }
-        
-        // Shuffle the password to avoid predictable patterns
-        for (int i = password.Count - 1; i > 0; i--)
-        {
-            int j = random.Next(i + 1);
-            (password[i], password[j]) = (password[j], password[i]);
-        }
-        
-        return new string(password.ToArray());
-    }
-} 
+    private static string GenerateTemporaryPassword() => Guid.NewGuid().ToString("N")[..12] + "A1!";
+}

@@ -35,9 +35,9 @@ public class UserCommands
     public class V1
     {
         public record CreateUser(string Email, string TenantId, string Role);
+        public record InviteUser(string Email, string FirstName, string LastName, string Role, string TenantId);
         public record UpdateEmail(string Id, string Email);
         public record DeleteUser(string Id);
-        public record InviteUser(string Email, string FirstName, string LastName, string Role, string TenantId);
         public record UpdateUserProfile(string Id, string FirstName, string LastName, string Role, bool IsActive);
         public record LockUser(string Id);
         public record UnlockUser(string Id);
