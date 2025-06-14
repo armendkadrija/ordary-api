@@ -12,7 +12,7 @@ public class ValidationService(IServiceProvider serviceProvider) : IValidationSe
     public async Task ValidateAsync<T>(T request, CancellationToken cancellationToken = default)
     {
         var validator = serviceProvider.GetService<IValidator<T>>();
-        if (validator == null) return; // No validator registered, skip validation
+        if (validator == null) return;
         
         var result = await validator.ValidateAsync(request, cancellationToken);
         if (!result.IsValid) throw new Exceptions.ValidationException(result.Errors);

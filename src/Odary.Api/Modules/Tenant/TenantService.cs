@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
+using Odary.Api.Infrastructure.Database;
 
 namespace Odary.Api.Modules.Tenant;
 

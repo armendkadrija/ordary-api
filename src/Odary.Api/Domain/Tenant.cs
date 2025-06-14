@@ -6,19 +6,19 @@ namespace Odary.Api.Domain;
 public class Tenant : BaseEntity, IAuditable
 {
     [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; }
     
     [MaxLength(100)]
-    public string Country { get; set; } = string.Empty;
+    public string Country { get; set; }
     
     [MaxLength(100)]
-    public string Timezone { get; set; } = string.Empty;
+    public string Timezone { get; set; }
     
     [MaxLength(500)]
     public string? LogoUrl { get; set; }
     
     [MaxLength(50)]
-    public string Slug { get; set; } = string.Empty;
+    public string Slug { get; set; }
     
     public bool IsActive { get; set; }
 
@@ -26,10 +26,7 @@ public class Tenant : BaseEntity, IAuditable
     public virtual ICollection<User> Users { get; private set; } = new List<User>();
 
     public virtual TenantSettings? Settings { get; private set; }
-
-    // Parameterless constructor for EF Core
-    private Tenant() { }
-
+    
     public Tenant(string name, string country, string timezone, string slug, string? logoUrl = null)
     {
         Name = name;

@@ -1,16 +1,10 @@
-using Odary.Api.Common.Authorization.Claims;
 using Odary.Api.Common.Services;
+using Odary.Api.Constants.Claims;
 
 namespace Odary.Api.Extensions;
 
 public static class MinimalApiClaimsExtensions
 {
-    /// <summary>
-    /// Requires a single claim for this endpoint
-    /// </summary>
-    /// <param name="builder">The route handler builder</param>
-    /// <param name="requiredClaim">The required claim (e.g., "patient_read")</param>
-    /// <returns>The route handler builder for chaining</returns>
     public static RouteHandlerBuilder WithClaim(this RouteHandlerBuilder builder, string requiredClaim)
     {
         return builder.AddEndpointFilter(async (context, next) =>
@@ -19,26 +13,15 @@ public static class MinimalApiClaimsExtensions
             var user = context.HttpContext.User;
 
             if (!user.Identity?.IsAuthenticated == true)
-            {
                 return Results.Unauthorized();
-            }
 
             var hasRequiredClaim = await user.HasClaimAsync(claimsService, requiredClaim);
             if (!hasRequiredClaim)
-            {
                 return Results.Forbid();
-            }
 
             return await next(context);
         });
     }
 
-
-    /// <summary>
-    /// Requires Super Admin role for this endpoint
-    /// </summary>
-    public static RouteHandlerBuilder RequireSuperAdmin(this RouteHandlerBuilder builder)
-    {
-        return builder.WithClaim(TenantClaims.Create); // Only SuperAdmin can create tenants
-    }
-} 
+    public static RouteHandlerBuilder RequireSuperAdmin(this RouteHandlerBuilder builder) => builder.WithClaim(TenantClaims.Create);
+}

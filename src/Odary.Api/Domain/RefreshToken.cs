@@ -11,7 +11,7 @@ public class RefreshToken : BaseEntity
     public string UserId { get; set; } = string.Empty;
 
     public DateTime ExpiresAt { get; set; }
-    public bool IsRevoked { get; set; } = false;
+    public bool IsRevoked { get; set; }
     public DateTime? RevokedAt { get; set; }
 
     [MaxLength(255)]

@@ -36,7 +36,7 @@ public class ClaimAuthorizationHandler(IClaimsService claimsService) : Authoriza
     }
 }
 
-public class ClaimRequirement(string requiredClaim) : IAuthorizationRequirement
+public abstract class ClaimRequirement(string requiredClaim) : IAuthorizationRequirement
 {
     public string RequiredClaim { get; } = requiredClaim;
 } 

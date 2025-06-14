@@ -2,9 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Authorization;
-using Odary.Api.Common.Authorization.Claims;
 using Odary.Api.Common.Services;
 using Odary.Api.Constants;
+using Odary.Api.Constants.Claims;
 using Odary.Api.Domain;
 
 namespace Odary.Api.Infrastructure.Database;
@@ -24,15 +24,7 @@ public class DatabaseSeeder(RoleManager<Role> roleManager, IClaimsService claims
 
     private async Task SeedRolesAsync()
     {
-        var roles = new[]
-        {
-            new { Name = Roles.SUPER_ADMIN, Description = "Platform administrator who manages tenants and system-wide operations" },
-            new { Name = Roles.ADMIN, Description = "Practice administrator with full access within their tenant" },
-            new { Name = Roles.DENTIST, Description = "Licensed dentist with clinical and administrative access within their practice" },
-            new { Name = Roles.ASSISTANT, Description = "Dental assistant with limited clinical access within their practice" }
-        };
-
-        foreach (var roleInfo in roles)
+        foreach (var roleInfo in Roles.ALL)
         {
             if (await roleManager.RoleExistsAsync(roleInfo.Name))
                 continue;
@@ -41,14 +33,10 @@ public class DatabaseSeeder(RoleManager<Role> roleManager, IClaimsService claims
             var result = await roleManager.CreateAsync(role);
 
             if (result.Succeeded)
-            {
                 logger.LogInformation("Created role: {RoleName}", roleInfo.Name);
-            }
             else
-            {
                 logger.LogError("Failed to create role {RoleName}: {Errors}",
                     roleInfo.Name, string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
         }
     }
 

@@ -23,9 +23,6 @@ public class TenantSettings : BaseEntity, IAuditable
     // Navigation property
     public virtual Tenant Tenant { get; private set; } = null!;
 
-    // Parameterless constructor for EF Core
-    private TenantSettings() { }
-
     public TenantSettings(string tenantId, string language, string currency, string dateFormat, string timeFormat)
     {
         TenantId = tenantId;

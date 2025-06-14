@@ -46,7 +46,7 @@ public class TenantQueries
             public string? Slug { get; set; }
             public bool? IsActive { get; set; }
 
-            public class Response : PaginatedResponse<TenantResources.V1.Tenant> { }
+            public class Response : PaginatedResponse<TenantResources.V1.Tenant>;
         }
 
         public record GetTenantSettings(string TenantId)

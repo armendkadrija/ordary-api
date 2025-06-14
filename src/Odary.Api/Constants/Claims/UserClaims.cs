@@ -1,21 +1,20 @@
-using Odary.Api.Constants;
+using Odary.Api.Common.Authorization;
 
-namespace Odary.Api.Common.Authorization.Claims;
+namespace Odary.Api.Constants.Claims;
 
 public static class UserClaims
 {
-    public const string Create = $"{Constants.Modules.USER}_{Actions.CREATE}";
-    public const string Invite = $"{Constants.Modules.USER}_{Actions.INVITE}";
-    public const string Read = $"{Constants.Modules.USER}_{Actions.READ}";
-    public const string Update = $"{Constants.Modules.USER}_{Actions.UPDATE}";
-    public const string Delete = $"{Constants.Modules.USER}_{Actions.DELETE}";
+    public const string Create = $"{Modules.USER}_{Actions.CREATE}";
+    public const string Invite = $"{Modules.USER}_{Actions.INVITE}";
+    public const string Read = $"{Modules.USER}_{Actions.READ}";
+    public const string Update = $"{Modules.USER}_{Actions.UPDATE}";
+    public const string Delete = $"{Modules.USER}_{Actions.DELETE}";
 
     public static ClaimDefinition[] All =>
     [
         new()
         {
             ClaimName = Create,
-            Description = "Create new users",
             DefaultAssignments = [Roles.SUPER_ADMIN]
         },
         new()
@@ -26,19 +25,16 @@ public static class UserClaims
         new()
         {
             ClaimName = Read,
-            Description = "View user information",
             DefaultAssignments = [Roles.SUPER_ADMIN, Roles.ADMIN]
         },
         new()
         {
             ClaimName = Update,
-            Description = "Update user information",
             DefaultAssignments = [Roles.SUPER_ADMIN, Roles.ADMIN]
         },
         new()
         {
             ClaimName = Delete,
-            Description = "Delete users",
             DefaultAssignments = [Roles.SUPER_ADMIN, Roles.ADMIN]
         }
     ];

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Odary.Api.Common.Database;
+using Odary.Api.Infrastructure.Database;
 using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Tests.TestFixtures;
@@ -39,7 +39,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             });
 
             // Replace distributed cache with in-memory version
-            services.AddSingleton<IDistributedCache, Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache>();
+            services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
 
             // Mock the email service
             var mockEmailService = Substitute.For<IEmailService>();

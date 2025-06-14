@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Odary.Api.Common.Authorization;
-using Odary.Api.Common.Database;
 using Odary.Api.Common.Services;
 using Odary.Api.Domain;
 using Odary.Api.Infrastructure.Database;
@@ -22,7 +21,6 @@ public static class ServiceCollectionExtensions
             {
                 Title = "Odary API",
                 Version = "v1",
-                Description = "A modular .NET 9 API with clean architecture"
             });
 
             // Custom schema IDs to handle nested classes properly
@@ -32,9 +30,7 @@ public static class ServiceCollectionExtensions
             var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
             if (File.Exists(xmlPath))
-            {
                 c.IncludeXmlComments(xmlPath);
-            }
 
             // Add JWT authentication to Swagger
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

@@ -14,7 +14,7 @@ public interface IAuditService
 
 public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider) : IAuditService
 {
-    public async Task<List<Domain.AuditLog>> CreateAuditLogsAsync(IEnumerable<EntityEntry> entries)
+    public Task<List<Domain.AuditLog>> CreateAuditLogsAsync(IEnumerable<EntityEntry> entries)
     {
         var auditLogs = new List<Domain.AuditLog>();
         var currentUserId = GetCurrentUserId();
@@ -31,11 +31,6 @@ public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProv
 
             // Skip if we don't have essential audit info
             if (string.IsNullOrEmpty(currentUserId))
-                continue;
-
-            // Skip if user doesn't exist in database (e.g., during testing with fake tokens)
-            // This prevents foreign key constraint violations
-            if (!await UserExistsAsync(currentUserId))
                 continue;
 
             string action;
@@ -109,15 +104,15 @@ public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProv
             auditLogs.Add(auditLog);
         }
 
-        return auditLogs;
+        return Task.FromResult(auditLogs);
     }
 
-    public string? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         try
         {
             var user = httpContextAccessor.HttpContext?.User;
-            return user?.TryGetUserId();
+            return user?.GetUserId();
         }
         catch
         {
@@ -125,7 +120,7 @@ public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProv
         }
     }
 
-    public string? GetCurrentUserIpAddress()
+    private string? GetCurrentUserIpAddress()
     {
         try
         {
@@ -138,7 +133,7 @@ public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProv
         }
     }
 
-    public string? GetCurrentUserAgent()
+    private string? GetCurrentUserAgent()
     {
         try
         {
@@ -148,20 +143,6 @@ public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProv
         catch
         {
             return null;
-        }
-    }
-
-    private async Task<bool> UserExistsAsync(string userId)
-    {
-        try
-        {
-            using var scope = serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<Database.OdaryDbContext>();
-            return await dbContext.Users.AnyAsync(u => u.Id == userId);
-        }
-        catch
-        {
-            return false;
         }
     }
 } 

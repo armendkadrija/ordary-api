@@ -1,9 +1,9 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Odary.Api.Modules.Tenant.Validators;
-using Odary.Api.Common.Authorization.Claims;
 using System.Security.Claims;
 using Odary.Api.Common.Services;
+using Odary.Api.Constants.Claims;
 using Odary.Api.Extensions;
 
 namespace Odary.Api.Modules.Tenant;

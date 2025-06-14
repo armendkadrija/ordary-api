@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
 using Odary.Api.Modules.Auth;
@@ -60,4 +59,4 @@ await app.Services.GetRequiredService<IDatabaseSeeder>().SeedAsync();
 app.Run();
 
 // Make Program class accessible for testing
-public partial class Program { }
+public partial class Program;

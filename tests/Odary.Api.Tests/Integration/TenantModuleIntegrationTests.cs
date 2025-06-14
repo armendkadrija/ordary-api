@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Odary.Api.Common.Database;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
 using Odary.Api.Infrastructure.Database;

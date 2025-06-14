@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Authorization;
-using Odary.Api.Common.Authorization.Claims;
-using Odary.Api.Common.Database;
 using Odary.Api.Common.Services;
 using Odary.Api.Constants;
+using Odary.Api.Constants.Claims;
 using Odary.Api.Domain;
 using Odary.Api.Infrastructure.Database;
 

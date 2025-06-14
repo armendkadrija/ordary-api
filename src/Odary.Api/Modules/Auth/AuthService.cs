@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Odary.Api.Common.Database;
 using Odary.Api.Common.Exceptions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Odary.Api.Common.Services;
+using Odary.Api.Infrastructure.Database;
 using Odary.Api.Infrastructure.Email;
 
 namespace Odary.Api.Modules.Auth;

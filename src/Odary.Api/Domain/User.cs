@@ -38,7 +38,6 @@ public class User : IdentityUser, IAuditable
 
     public User(string? tenantId, string email, string firstName, string lastName, string role)
     {
-        Id = Guid.NewGuid().ToString("N"); // Clean 32-character hex string
         TenantId = tenantId;
         Email = email;
         UserName = email; // Identity requires UserName

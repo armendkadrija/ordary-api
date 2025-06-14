@@ -1,24 +1,15 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using Odary.Api.Common.Database;
+using Odary.Api.Infrastructure.Database;
 
 namespace Odary.Api.Common.Services;
 
 public interface IClaimsService
 {
-    /// <summary>
-    /// Gets all claims for a specific role (cached)
-    /// </summary>
     Task<string[]> GetRoleClaimsAsync(string role, CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// Checks if a role has a specific claim
-    /// </summary>
     Task<bool> HasClaimAsync(string role, string claim, CancellationToken cancellationToken = default);
-
     Task InvalidateRoleCacheAsync(string role);
-
 }
 
 public class ClaimsService(
@@ -77,8 +68,6 @@ public class ClaimsService(
         var claims = await GetRoleClaimsAsync(role, cancellationToken);
         return claims.Contains(claim);
     }
-
-    
 
     public async Task InvalidateRoleCacheAsync(string role)
     {

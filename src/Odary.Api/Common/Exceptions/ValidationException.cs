@@ -4,7 +4,7 @@ namespace Odary.Api.Common.Exceptions;
 
 public class ValidationException(List<ValidationFailure> errors) : Exception
 {
-    public List<ValidationFailure> Errors { get; } = errors;
+    private List<ValidationFailure> Errors { get; } = errors;
 
     public object GetValidationErrors()
         => Errors.Select(

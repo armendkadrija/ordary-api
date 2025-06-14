@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Odary.Api.Common.Database;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
+using Odary.Api.Infrastructure.Database;
 using Odary.Api.Infrastructure.Email;
 using Odary.Api.Modules.Auth;
 

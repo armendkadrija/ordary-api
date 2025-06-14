@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Services;
 using Odary.Api.Domain;
 
-namespace Odary.Api.Common.Database;
-
+namespace Odary.Api.Infrastructure.Database;
+    
 public class OdaryDbContext : IdentityDbContext<User, Role, string>
 {
     private readonly IAuditService? _auditService;
@@ -27,9 +27,9 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
         if (_auditService != null)
         {
             var auditableEntries = ChangeTracker.Entries()
-                .Where(e => e.State == EntityState.Added || 
-                           e.State == EntityState.Modified || 
-                           e.State == EntityState.Deleted)
+                .Where(e => e.State == EntityState.Added ||
+                            e.State == EntityState.Modified ||
+                            e.State == EntityState.Deleted)
                 .ToList();
 
             auditLogs = await _auditService.CreateAuditLogsAsync(auditableEntries);
@@ -57,9 +57,9 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
         if (_auditService != null)
         {
             var auditableEntries = ChangeTracker.Entries()
-                .Where(e => e.State == EntityState.Added || 
-                           e.State == EntityState.Modified || 
-                           e.State == EntityState.Deleted)
+                .Where(e => e.State == EntityState.Added ||
+                            e.State == EntityState.Modified ||
+                            e.State == EntityState.Deleted)
                 .ToList();
 
             auditLogs = _auditService.CreateAuditLogsAsync(auditableEntries).GetAwaiter().GetResult();
@@ -187,6 +187,4 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
-
-
-} 
+}

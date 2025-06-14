@@ -1,7 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using Odary.Api.Common.Authorization.Claims;
 using Odary.Api.Common.Services;
+using Odary.Api.Constants.Claims;
 using Odary.Api.Modules.User.Validators;
 using Odary.Api.Extensions;
 
