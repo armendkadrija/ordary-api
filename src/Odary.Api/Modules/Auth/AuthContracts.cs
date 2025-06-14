@@ -43,7 +43,6 @@ public class AuthResources
             public string AccessToken { get; init; } = string.Empty;
             public string RefreshToken { get; init; } = string.Empty;
             public DateTime ExpiresAt { get; init; }
-            public string TokenType { get; init; } = "Bearer";
             public UserProfile User { get; init; } = null!;
         }
 
@@ -58,7 +57,5 @@ public class AuthResources
             public DateTime? LastLoginAt { get; init; }
             public DateTimeOffset CreatedAt { get; init; }
         }
-
-
     }
 } 

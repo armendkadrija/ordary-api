@@ -47,7 +47,7 @@ public static class AuthModuleRegistration
                 return Results.Ok(result);
             })
             .WithName("SignIn")
-            .WithSummary("Authenticate user and return JWT token")
+            .WithSummary("Authenticate user")
             .Produces<AuthResources.V1.TokenResponse>()
             .ProducesValidationProblem();
 
@@ -121,7 +121,7 @@ public static class AuthModuleRegistration
                 CancellationToken cancellationToken) =>
             {
                 var userId = user.GetUserId();
-                var result = await authService.GetCurrentUserAsync(userId, cancellationToken);
+                var result = await authService.GetCurrentUserAsync(userId);
                 return Results.Ok(result);
             })
             .RequireAuthorization()
@@ -129,8 +129,6 @@ public static class AuthModuleRegistration
             .WithSummary("Get current user profile")
             .Produces<AuthQueries.V1.GetCurrentUser.Response>()
             .Produces(404);
-
-
 
         return app;
     }

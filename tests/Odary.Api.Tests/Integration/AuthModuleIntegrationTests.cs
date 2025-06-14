@@ -42,7 +42,6 @@ public class AuthModuleIntegrationTests : IClassFixture<TestWebApplicationFactor
         result!.AccessToken.Should().NotBeEmpty();
         result.RefreshToken.Should().NotBeEmpty();
         result.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
-        result.TokenType.Should().Be("Bearer");
         result.User.Should().NotBeNull();
         result.User.Email.Should().Be("test@example.com");
         result.User.Role.Should().Be(Roles.DENTIST);

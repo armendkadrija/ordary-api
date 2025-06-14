@@ -13,12 +13,12 @@ namespace Odary.Api.Modules.Auth;
 
 public interface IAuthService
 {
-    Task<AuthResources.V1.TokenResponse> SignInAsync(AuthCommands.V1.SignIn command, string? ipAddress = null, string? userAgent = null, CancellationToken cancellationToken = default);
-    Task<AuthResources.V1.TokenResponse> RefreshTokenAsync(AuthCommands.V1.RefreshToken command, string? ipAddress = null, string? userAgent = null, CancellationToken cancellationToken = default);
-    Task<AuthQueries.V1.GetCurrentUser.Response> GetCurrentUserAsync(string userId, CancellationToken cancellationToken = default);
-    Task<string> ForgotPasswordAsync(AuthCommands.V1.ForgotPassword command, CancellationToken cancellationToken = default);
-    Task ResetPasswordAsync(AuthCommands.V1.ResetPassword command, CancellationToken cancellationToken = default);
-    Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken = default);
+    Task<AuthResources.V1.TokenResponse> SignInAsync(AuthCommands.V1.SignIn command, string? ipAddress, string? userAgent , CancellationToken cancellationToken);
+    Task<AuthResources.V1.TokenResponse> RefreshTokenAsync(AuthCommands.V1.RefreshToken command, string? ipAddress , string? userAgent , CancellationToken cancellationToken);
+    Task<AuthQueries.V1.GetCurrentUser.Response> GetCurrentUserAsync(string userId);
+    Task<string> ForgotPasswordAsync(AuthCommands.V1.ForgotPassword command, CancellationToken cancellationToken);
+    Task ResetPasswordAsync(AuthCommands.V1.ResetPassword command, CancellationToken cancellationToken);
+    Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken);
 }
 
 public class AuthService(
@@ -37,9 +37,9 @@ public class AuthService(
 
     public async Task<AuthResources.V1.TokenResponse> SignInAsync(
         AuthCommands.V1.SignIn command,
-        string? ipAddress = null,
-        string? userAgent = null,
-        CancellationToken cancellationToken = default)
+        string? ipAddress ,
+        string? userAgent ,
+        CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -87,12 +87,11 @@ public class AuthService(
             AccessToken = token.AccessToken,
             RefreshToken = token.RefreshToken,
             ExpiresAt = token.ExpiresAt,
-            TokenType = "Bearer",
             User = user.ToUserProfile()
         };
     }
 
-    public async Task<AuthQueries.V1.GetCurrentUser.Response> GetCurrentUserAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<AuthQueries.V1.GetCurrentUser.Response> GetCurrentUserAsync(string userId)
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user == null)
@@ -111,9 +110,9 @@ public class AuthService(
 
     public async Task<AuthResources.V1.TokenResponse> RefreshTokenAsync(
         AuthCommands.V1.RefreshToken command, 
-        string? ipAddress = null, 
-        string? userAgent = null, 
-        CancellationToken cancellationToken = default)
+        string? ipAddress , 
+        string? userAgent , 
+        CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -154,14 +153,13 @@ public class AuthService(
             AccessToken = newToken.AccessToken,
             RefreshToken = newToken.RefreshToken,
             ExpiresAt = newToken.ExpiresAt,
-            TokenType = "Bearer",
             User = user.ToUserProfile()
         };
     }
 
 
 
-    public async Task<string> ForgotPasswordAsync(AuthCommands.V1.ForgotPassword command, CancellationToken cancellationToken = default)
+    public async Task<string> ForgotPasswordAsync(AuthCommands.V1.ForgotPassword command, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -192,7 +190,7 @@ public class AuthService(
         return "If the email exists, a password reset link has been sent.";
     }
 
-    public async Task ResetPasswordAsync(AuthCommands.V1.ResetPassword command, CancellationToken cancellationToken = default)
+    public async Task ResetPasswordAsync(AuthCommands.V1.ResetPassword command, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -236,7 +234,7 @@ public class AuthService(
         logger.LogInformation("Password reset successfully for user: {Email}", targetUser.Email);
     }
 
-    public async Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken = default)
+    public async Task ChangePasswordAsync(AuthCommands.V1.ChangePassword command, string userId, CancellationToken cancellationToken)
     {
         await validationService.ValidateAsync(command, cancellationToken);
 
@@ -269,7 +267,7 @@ public class AuthService(
     private async Task<(string AccessToken, string RefreshToken, DateTime ExpiresAt)> GenerateJwtTokenAsync(
         Domain.User user, 
         bool rememberMe, 
-        string? ipAddress = null, 
+        string? ipAddress , 
         string? userAgent = null)
     {
         var jwtSettings = configuration.GetSection("JwtSettings");

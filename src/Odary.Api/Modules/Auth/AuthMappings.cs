@@ -7,7 +7,7 @@ public static class AuthMappings
         return new AuthResources.V1.UserProfile
         {
             Id = user.Id,
-            Email = user.Email ?? string.Empty,
+            Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,
