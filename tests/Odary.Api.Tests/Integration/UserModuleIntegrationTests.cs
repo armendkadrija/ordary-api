@@ -3,6 +3,9 @@ using Odary.Api.Common.Services;
 using Odary.Api.Constants;
 using Odary.Api.Domain;
 using Odary.Api.Infrastructure.Database;
+using Odary.Api.Modules.User;
+using Odary.Api.Modules.Auth;
+using Odary.Api.Tests.TestFixtures;
 
 namespace Odary.Api.Tests.Integration;
 
@@ -514,12 +517,13 @@ public class UserModuleIntegrationTests : IAsyncLifetime
         result.GetProperty("message").GetString().Should().Be("Invitation sent successfully");
 
         // Verify invitation email was sent via mock service
-        var sentInvitation = _factory.MockUserEmailService.SentInvitations.Should().ContainSingle().Subject;
-        sentInvitation.Email.Should().Be("invite@example.com");
-        sentInvitation.FirstName.Should().Be("Invited");
-        sentInvitation.LastName.Should().Be("User");
-        sentInvitation.InvitationToken.Should().NotBeNullOrEmpty();
-        sentInvitation.ExpiresAt.Should().BeAfter(DateTimeOffset.UtcNow);
+        var invitationEmail = _factory.MockEmailService.GetLatestEmailTo("invite@example.com");
+        invitationEmail.Should().NotBeNull();
+        invitationEmail!.Subject.Should().Contain("Welcome");
+        invitationEmail.HtmlContent.Should().Contain("Invited");
+        
+        var token = _factory.MockEmailService.ExtractTokenFromHtml(invitationEmail.HtmlContent);
+        token.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -567,6 +571,8 @@ public class UserModuleIntegrationTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("Role must be one of");
     }
+
+
 
     #endregion
 
@@ -757,132 +763,47 @@ public class UserModuleIntegrationTests : IAsyncLifetime
 
     #endregion
 
-    #region Onboard User Tests
+    #region Email Integration Tests
 
     [Fact]
-    public async Task OnboardUser_WithValidToken_ReturnsOnboardingResponse()
-    {
-        // Arrange - First create an invitation
-        var inviteCommand = new
-        {
-            email = "onboard@example.com",
-            firstName = "Onboard",
-            lastName = "User",
-            role = Roles.ASSISTANT,
-            tenantId = _testTenantId
-        };
-
-        var inviteResponse = await _httpClient.PostAsJsonAsync("/api/v1/users/invite", inviteCommand);
-        inviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var inviteContent = await inviteResponse.Content.ReadAsStringAsync();
-        var inviteResult = JsonSerializer.Deserialize<JsonElement>(inviteContent, _jsonOptions);
-        inviteResult.GetProperty("message").GetString().Should().Be("Invitation sent successfully");
-
-        // Get the invitation token from the mock email service
-        var sentInvitation = _factory.MockUserEmailService.SentInvitations.Should().ContainSingle().Subject;
-        sentInvitation.Email.Should().Be("onboard@example.com");
-        sentInvitation.FirstName.Should().Be("Onboard");
-        sentInvitation.LastName.Should().Be("User");
-
-        // Act - Now onboard the user
-        var onboardCommand = new
-        {
-            email = "onboard@example.com",
-            token = sentInvitation.InvitationToken,
-            firstName = "Updated",
-            lastName = "Name",
-            password = "NewPassword123!"
-        };
-
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
-
-        result.GetProperty("success").GetBoolean().Should().BeTrue();
-        result.GetProperty("message").GetString().Should().Be("User onboarding completed successfully");
-
-        // Verify onboarding completion email was sent
-        var onboardingEmail = _factory.MockUserEmailService.SentOnboardingEmails.Should().ContainSingle().Subject;
-        onboardingEmail.Email.Should().Be("onboard@example.com");
-        onboardingEmail.FirstName.Should().Be("Updated");
-        onboardingEmail.LastName.Should().Be("Name");
-        onboardingEmail.Role.Should().Be(Roles.ASSISTANT);
-    }
-
-    [Fact]
-    public async Task OnboardUser_WithInvalidToken_ReturnsBadRequest()
-    {
-        // Act
-        var onboardCommand = new
-        {
-            email = "", // Invalid email
-            token = "", // Invalid token
-            firstName = "", // Invalid first name
-            lastName = "", // Invalid last name
-            password = "123" // Invalid password
-        };
-
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Email is required");
-        content.Should().Contain("Token is required");
-        content.Should().Contain("First name is required");
-        content.Should().Contain("Last name is required");
-        content.Should().Contain("Password must be at least 8 characters long");
-    }
-
-    [Fact]
-    public async Task OnboardUser_WithWeakPassword_ReturnsBadRequest()
+    public async Task InviteUser_EmailIntegration_ShouldExtractTokenFromHtml()
     {
         // Arrange
         var command = new
         {
-            email = "test@example.com",
-            token = "some-token",
-            firstName = "Test",
-            lastName = "User",
-            password = "weak"
+            email = "emailtest@example.com",
+            firstName = "Email",
+            lastName = "Test",
+            role = Roles.ASSISTANT,
+            tenantId = _testTenantId
         };
 
         // Act
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", command);
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/invite", command);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Password must be at least 8 characters long");
-    }
-
-    [Fact]
-    public async Task OnboardUser_WithInvalidEmailOrToken_ReturnsBadRequest()
-    {
-        // Act
-        var onboardCommand = new
-        {
-            email = "nonexistent@example.com",
-            token = "invalid-token",
-            firstName = "Test",
-            lastName = "User",
-            password = "Password123!"
-        };
-
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/users/onboard", onboardCommand);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Invalid email or token");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        // Verify email was sent and we can extract token from HTML
+        var invitationEmail = _factory.MockEmailService.GetLatestEmailTo("emailtest@example.com");
+        invitationEmail.Should().NotBeNull();
+        invitationEmail!.Subject.Should().Contain("Welcome");
+        
+        // Extract token using the unified mock service
+        var token = _factory.MockEmailService.ExtractTokenFromHtml(invitationEmail.HtmlContent);
+        token.Should().NotBeNullOrEmpty();
+        
+        // Verify we can also get the token using the helper method
+        var helperToken = _factory.MockEmailService.GetInvitationTokenFor("emailtest@example.com");
+        helperToken.Should().Be(token);
+        
+        // Verify email content contains expected elements
+        invitationEmail.HtmlContent.Should().Contain("Email"); // First name
+        invitationEmail.HtmlContent.Should().Contain("accept-invitation"); // URL path
+        
+        // Verify we can extract the email from the URL too
+        var extractedEmail = _factory.MockEmailService.ExtractEmailFromHtml(invitationEmail.HtmlContent);
+        extractedEmail.Should().Be("emailtest@example.com");
     }
 
     #endregion

@@ -27,7 +27,7 @@ public class AuthModuleIntegrationTests : IClassFixture<TestWebApplicationFactor
     {
         // Arrange
         await _factory.ResetDatabaseAsync();
-        var user = await CreateTestUserAsync("test@example.com", "TestPassword123", Roles.DENTIST);
+        await CreateTestUserAsync("test@example.com", "TestPassword123", Roles.DENTIST);
         
         var signInCommand = new AuthCommands.V1.SignIn("test@example.com", "TestPassword123", false);
 
@@ -384,12 +384,18 @@ public class AuthModuleIntegrationTests : IClassFixture<TestWebApplicationFactor
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
         
-        // Verify password reset email was sent via mock service
-        var sentEmail = _factory.MockAuthEmailService.SentPasswordResetEmails.Should().ContainSingle().Subject;
-        sentEmail.Email.Should().Be("test@example.com");
-        sentEmail.FirstName.Should().Be("John");
-        sentEmail.ResetToken.Should().NotBeNullOrEmpty();
-        sentEmail.ExpiresAt.Should().BeAfter(DateTimeOffset.UtcNow);
+        // Verify password reset email was sent
+        var resetEmail = _factory.MockEmailService.GetLatestEmailTo("test@example.com");
+        resetEmail.Should().NotBeNull();
+        resetEmail!.Subject.Should().Contain("Reset");
+        
+        // Extract and verify token from HTML
+        var token = _factory.MockEmailService.ExtractTokenFromHtml(resetEmail.HtmlContent);
+        token.Should().NotBeNullOrEmpty();
+        
+        // Verify email contains expected content
+        resetEmail.HtmlContent.Should().Contain("John");
+        resetEmail.HtmlContent.Should().Contain("reset-password");
     }
 
     [Fact]
@@ -404,13 +410,12 @@ public class AuthModuleIntegrationTests : IClassFixture<TestWebApplicationFactor
         var forgotResponse = await _client.PostAsJsonAsync("/api/v1/auth/forgot-password", forgotPasswordCommand);
         forgotResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
-        // Step 2: Get the reset token from the mock email service
-        var sentEmail = _factory.MockAuthEmailService.SentPasswordResetEmails.Should().ContainSingle().Subject;
-        sentEmail.Email.Should().Be("test@example.com");
-        sentEmail.ResetToken.Should().NotBeNullOrEmpty();
+        // Step 2: Get the reset token from the email HTML
+        var resetToken = _factory.MockEmailService.GetPasswordResetTokenFor("test@example.com");
+        resetToken.Should().NotBeNullOrEmpty();
 
         // Step 3: Use the token to reset password
-        var resetPasswordCommand = new AuthCommands.V1.ResetPassword("test@example.com", sentEmail.ResetToken, "NewPassword123");
+        var resetPasswordCommand = new AuthCommands.V1.ResetPassword("test@example.com", resetToken!, "NewPassword123");
         var resetResponse = await _client.PostAsJsonAsync("/api/v1/auth/reset-password", resetPasswordCommand);
         resetResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 

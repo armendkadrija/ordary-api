@@ -3,11 +3,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
 using Odary.Api.Infrastructure.Database;
 using Odary.Api.Infrastructure.Email;
-using Odary.Api.Modules.User;
-using Odary.Api.Modules.Auth;
 using Odary.Api.Tests.Mocks;
 
 namespace Odary.Api.Tests.TestFixtures;
@@ -15,8 +12,7 @@ namespace Odary.Api.Tests.TestFixtures;
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     private static readonly string _databaseName = "TestDatabase_" + Guid.NewGuid().ToString("N")[..8];
-    public MockUserEmailService MockUserEmailService { get; } = new();
-    public MockAuthEmailService MockAuthEmailService { get; } = new();
+    public MockEmailService MockEmailService { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -28,8 +24,6 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 || service.ServiceType == typeof(OdaryDbContext)
                 || service.ServiceType == typeof(IDistributedCache) 
                 || service.ServiceType == typeof(IEmailService)
-                || service.ServiceType == typeof(IUserEmailService)
-                || service.ServiceType == typeof(IAuthEmailService)
             ).ToList();
 
             foreach (var service in servicesToRemove)
@@ -48,13 +42,8 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             // Replace distributed cache with in-memory version
             services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
 
-            // Mock the email service
-            var mockEmailService = Substitute.For<IEmailService>();
-            services.AddSingleton(mockEmailService);
-
-            // Use mock email services
-            services.AddSingleton<IUserEmailService>(MockUserEmailService);
-            services.AddSingleton<IAuthEmailService>(MockAuthEmailService);
+            // Use single mock email service for all email functionality
+            services.AddSingleton<IEmailService>(MockEmailService);
 
             // Set up logging to capture test output
             services.AddLogging(loggingBuilder =>
@@ -77,8 +66,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         await context.Database.EnsureDeletedAsync();
         await context.Database.EnsureCreatedAsync();
         
-        // Clear mock email services
-        MockUserEmailService.Clear();
-        MockAuthEmailService.Clear();
+        // Clear mock email service
+        MockEmailService.Clear();
     }
 }
