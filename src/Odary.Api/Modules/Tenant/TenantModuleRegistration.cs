@@ -191,26 +191,6 @@ public static class TenantModuleRegistration
         .Produces<TenantSettingsResources.V1.TenantSettings>()
         .ProducesValidationProblem();
 
-        // User Management endpoints
-        var userGroup = app.MapGroup("/api/v1/tenants/{tenantId}/users").WithTags("Tenant Users");
-
-        // Invite user to tenant
-        userGroup.MapPost("/invite", async (
-            string tenantId,
-            [FromBody] TenantCommands.V1.InviteUser command,
-            ITenantService tenantService,
-            CancellationToken cancellationToken) =>
-        {
-            var updatedCommand = command with { TenantId = tenantId };
-            await tenantService.InviteUserAsync(updatedCommand, cancellationToken);
-            return Results.Accepted();
-        })
-        .WithClaim(UserClaims.Invite)
-        .WithName("InviteUserToTenant")
-        .WithSummary("Invite user to join tenant (Role and User Management)")
-        .Produces(StatusCodes.Status202Accepted)
-        .ProducesValidationProblem();
-
         return app;
     }
 }

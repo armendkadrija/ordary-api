@@ -17,7 +17,7 @@ public interface ITenantService
     Task<TenantSettingsResources.V1.TenantSettings> CreateTenantSettingsAsync(TenantCommands.V1.CreateTenantSettings command, CancellationToken cancellationToken );
     Task<TenantSettingsResources.V1.TenantSettings> UpdateTenantSettingsAsync(TenantCommands.V1.UpdateTenantSettings command, CancellationToken cancellationToken );
     Task<TenantQueries.V1.GetTenantSettings.Response> GetTenantSettingsAsync(TenantQueries.V1.GetTenantSettings query, CancellationToken cancellationToken );
-    Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken );
+
 }
 
 public class TenantService(
@@ -283,36 +283,5 @@ public class TenantService(
             throw new NotFoundException($"Tenant settings for tenant {query.TenantId} not found");
 
         return settings.ToGetTenantSettingsResponse();
-    }
-
-    public async Task InviteUserAsync(TenantCommands.V1.InviteUser command, CancellationToken cancellationToken )
-    {
-        // Admin users can only access their own tenant settings
-        if (CurrentUser.IsAdmin && command.TenantId != CurrentUser.TenantId)
-            throw new BusinessException("You can only access your own tenant settings");
-        
-        // Verify tenant exists
-        var tenant = await dbContext.Tenants
-            .FirstOrDefaultAsync(t => t.Id == command.TenantId && t.IsActive, cancellationToken);
-
-        if (tenant == null)
-            throw new NotFoundException($"Active tenant with ID {command.TenantId} not found");
-
-        // Check if user already exists
-        var existingUser = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
-
-        if (existingUser != null)
-            throw new BusinessException("A user with this email already exists");
-
-        // In a real implementation, this would send an invitation email
-        // For now, we'll just log the invitation
-        logger.LogInformation("User invitation sent to {Email} for tenant {TenantId} with role {Role}", 
-            command.Email, command.TenantId, command.Role);
-
-        // TODO: Implement email invitation system
-        // - Generate invitation token
-        // - Send email with signup link
-        // - Store pending invitation in database
     }
 } 

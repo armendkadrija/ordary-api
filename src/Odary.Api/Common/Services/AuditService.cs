@@ -12,7 +12,7 @@ public interface IAuditService
     Task<List<Domain.AuditLog>> CreateAuditLogsAsync(IEnumerable<EntityEntry> entries);
 }
 
-public class AuditService(IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider) : IAuditService
+public class AuditService(IHttpContextAccessor httpContextAccessor) : IAuditService
 {
     public Task<List<Domain.AuditLog>> CreateAuditLogsAsync(IEnumerable<EntityEntry> entries)
     {

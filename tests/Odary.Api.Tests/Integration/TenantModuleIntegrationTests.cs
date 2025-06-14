@@ -881,95 +881,6 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
 
     #endregion
 
-    #region Invite User to Tenant Tests
-
-    [Fact]
-    public async Task InviteUserToTenant_WithValidData_ReturnsAccepted()
-    {
-        // Arrange
-        var command = new
-        {
-            name = "John Doe",
-            email = "john.doe@example.com",
-            role = Roles.DENTIST
-        };
-
-        // Act
-        var response = await _httpClient.PostAsJsonAsync($"/api/v1/tenants/{_testTenantId}/users/invite", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
-    }
-
-    [Fact]
-    public async Task InviteUserToTenant_WithExistingEmail_ReturnsBadRequest()
-    {
-        // Arrange
-        var command = new
-        {
-            name = "Admin User",
-            email = "admin@example.com", // Already exists
-            role = Roles.DENTIST
-        };
-
-        // Act
-        var response = await _httpClient.PostAsJsonAsync($"/api/v1/tenants/{_testTenantId}/users/invite", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("already exists");
-    }
-
-    [Fact]
-    public async Task InviteUserToTenant_ForInactiveTenant_ReturnsNotFound()
-    {
-        // Arrange - Create an inactive tenant
-        using var scope = _factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdaryDbContext>();
-        
-        var inactiveTenant = new Tenant("Inactive Clinic", "US", "America/New_York", "inactive-clinic")
-        {
-            IsActive = false
-        };
-        context.Tenants.Add(inactiveTenant);
-        await context.SaveChangesAsync();
-
-        var command = new
-        {
-            name = "John Doe",
-            email = "john.doe@example.com",
-            role = Roles.DENTIST
-        };
-
-        // Act
-        var response = await _httpClient.PostAsJsonAsync($"/api/v1/tenants/{inactiveTenant.Id}/users/invite", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task InviteUserToTenant_ForNonExistentTenant_ReturnsNotFound()
-    {
-        // Arrange
-        var command = new
-        {
-            name = "John Doe",
-            email = "john.doe@example.com",
-            role = Roles.DENTIST
-        };
-
-        // Act
-        var response = await _httpClient.PostAsJsonAsync($"/api/v1/tenants/{Guid.NewGuid()}/users/invite", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    #endregion
-
     #region Authentication Tests
 
     [Fact]
@@ -987,8 +898,7 @@ public class TenantModuleIntegrationTests : IAsyncLifetime
             unauthenticatedClient.PostAsync($"/api/v1/tenants/{_testTenantId}/activate", null),
             unauthenticatedClient.PostAsync($"/api/v1/tenants/{_testTenantId}/deactivate", null),
             unauthenticatedClient.GetAsync($"/api/v1/tenants/{_testTenantId}/settings"),
-            unauthenticatedClient.PutAsJsonAsync($"/api/v1/tenants/{_testTenantId}/settings", new { }),
-            unauthenticatedClient.PostAsJsonAsync($"/api/v1/tenants/{_testTenantId}/users/invite", new { })
+            unauthenticatedClient.PutAsJsonAsync($"/api/v1/tenants/{_testTenantId}/settings", new { })
         );
 
         foreach (var response in responses)

@@ -101,12 +101,6 @@ public class TenantCommands
             string Currency,
             string DateFormat,
             string TimeFormat);
-
-        public record InviteUser(
-            string TenantId,
-            string Name,
-            string Email,
-            string Role);
     }
 }
 

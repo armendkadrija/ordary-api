@@ -216,7 +216,7 @@ public class EmailTemplateServiceTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_templatesDirectory, "static-template.scriban"), templateContent);
 
         // Act
-        var result = await _service.RenderTemplateAsync("static-template", null);
+        var result = await _service.RenderTemplateAsync("static-template", null!);
 
         // Assert
         Assert.Equal("Static content without variables", result);
