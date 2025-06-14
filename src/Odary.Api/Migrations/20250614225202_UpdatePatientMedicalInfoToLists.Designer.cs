@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Odary.Api.Infrastructure.Database;
@@ -12,9 +13,11 @@ using Odary.Api.Infrastructure.Database;
 namespace Odary.Api.Migrations
 {
     [DbContext(typeof(OdaryDbContext))]
-    partial class OdaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250614225202_UpdatePatientMedicalInfoToLists")]
+    partial class UpdatePatientMedicalInfoToLists
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,9 +238,9 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("id");
 
-                    b.PrimitiveCollection<string[]>("Allergies")
+                    b.Property<string>("Allergies")
                         .IsRequired()
-                        .HasColumnType("text[]")
+                        .HasColumnType("jsonb")
                         .HasColumnName("allergies");
 
                     b.Property<string>("ArchiveReason")
@@ -263,9 +266,9 @@ namespace Odary.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.PrimitiveCollection<string[]>("CurrentMedications")
+                    b.Property<string>("CurrentMedications")
                         .IsRequired()
-                        .HasColumnType("text[]")
+                        .HasColumnType("jsonb")
                         .HasColumnName("current_medications");
 
                     b.Property<DateOnly>("DateOfBirth")
@@ -324,9 +327,9 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("last_name");
 
-                    b.PrimitiveCollection<string[]>("MedicalConditions")
+                    b.Property<string>("MedicalConditions")
                         .IsRequired()
-                        .HasColumnType("text[]")
+                        .HasColumnType("jsonb")
                         .HasColumnName("medical_conditions");
 
                     b.Property<string>("Notes")

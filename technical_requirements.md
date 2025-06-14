@@ -526,7 +526,7 @@ public static WebApplication MapUserEndpoints(this WebApplication app)
     // Add new endpoint mapping
     group.MapPost("/{id}/archive", async (
         string id,
-        [FromBody] ArchiveUserRequest request,
+        [FromBody] UserCommands.V1.ArchiveUser request,
         IUserService userService,
         CancellationToken cancellationToken) =>
     {
@@ -540,9 +540,6 @@ public static WebApplication MapUserEndpoints(this WebApplication app)
     
     return app;
 }
-
-// Simple request model for minimal API binding
-public record ArchiveUserRequest(string Reason);
 ```
 
 ### 6. **Register Dependencies**

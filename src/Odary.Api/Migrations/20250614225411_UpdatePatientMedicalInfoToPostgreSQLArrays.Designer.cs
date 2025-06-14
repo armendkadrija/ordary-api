@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Odary.Api.Infrastructure.Database;
@@ -12,9 +13,11 @@ using Odary.Api.Infrastructure.Database;
 namespace Odary.Api.Migrations
 {
     [DbContext(typeof(OdaryDbContext))]
-    partial class OdaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250614225411_UpdatePatientMedicalInfoToPostgreSQLArrays")]
+    partial class UpdatePatientMedicalInfoToPostgreSQLArrays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,7 +238,7 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("id");
 
-                    b.PrimitiveCollection<string[]>("Allergies")
+                    b.PrimitiveCollection<List<string>>("Allergies")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("allergies");
@@ -263,7 +266,7 @@ namespace Odary.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.PrimitiveCollection<string[]>("CurrentMedications")
+                    b.PrimitiveCollection<List<string>>("CurrentMedications")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("current_medications");
@@ -324,7 +327,7 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("last_name");
 
-                    b.PrimitiveCollection<string[]>("MedicalConditions")
+                    b.PrimitiveCollection<List<string>>("MedicalConditions")
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("medical_conditions");

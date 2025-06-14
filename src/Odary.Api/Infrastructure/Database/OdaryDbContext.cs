@@ -4,7 +4,7 @@ using Odary.Api.Common.Services;
 using Odary.Api.Domain;
 
 namespace Odary.Api.Infrastructure.Database;
-    
+
 public class OdaryDbContext : IdentityDbContext<User, Role, string>
 {
     private readonly IAuditService? _auditService;
@@ -100,6 +100,7 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
     public DbSet<TenantSettings> TenantSettings { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Patient> Patients { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -185,6 +186,25 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Patient>(entity =>
+        {
+            // Indexes
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.PhoneNumber);
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => new { e.FirstName, e.LastName });
+            entity.HasIndex(e => e.IsArchived);
+
+            // Foreign key relationship with Tenant
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // PostgreSQL natively supports List<string> as text[] arrays
+            // No explicit configuration needed - EF Core + Npgsql handle this automatically!
         });
     }
 }

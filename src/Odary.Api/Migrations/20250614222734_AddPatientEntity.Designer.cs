@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Odary.Api.Infrastructure.Database;
@@ -12,9 +13,11 @@ using Odary.Api.Infrastructure.Database;
 namespace Odary.Api.Migrations
 {
     [DbContext(typeof(OdaryDbContext))]
-    partial class OdaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250614222734_AddPatientEntity")]
+    partial class AddPatientEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,9 +238,9 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("id");
 
-                    b.PrimitiveCollection<string[]>("Allergies")
-                        .IsRequired()
-                        .HasColumnType("text[]")
+                    b.Property<string>("Allergies")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("allergies");
 
                     b.Property<string>("ArchiveReason")
@@ -263,9 +266,8 @@ namespace Odary.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.PrimitiveCollection<string[]>("CurrentMedications")
-                        .IsRequired()
-                        .HasColumnType("text[]")
+                    b.Property<string>("CurrentMedications")
+                        .HasColumnType("text")
                         .HasColumnName("current_medications");
 
                     b.Property<DateOnly>("DateOfBirth")
@@ -324,9 +326,8 @@ namespace Odary.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("last_name");
 
-                    b.PrimitiveCollection<string[]>("MedicalConditions")
-                        .IsRequired()
-                        .HasColumnType("text[]")
+                    b.Property<string>("MedicalConditions")
+                        .HasColumnType("text")
                         .HasColumnName("medical_conditions");
 
                     b.Property<string>("Notes")
