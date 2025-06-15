@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,6 +13,10 @@ namespace Odary.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:Enum:inventory_category", "composite,gic,anesthetic,impression,cement,endodontic,periodontal,orthodontic,prosthetic,surgical,preventive,whitening,adhesive,consumables,equipment,other")
+                .Annotation("Npgsql:Enum:inventory_unit_type", "syringe,carpule,gram,milliliter,piece,tube,bottle,pack,roll,sheet,capsule,tip,needle,blade,file,bur,other");
+
             migrationBuilder.CreateTable(
                 name: "roles",
                 columns: table => new
@@ -38,6 +43,7 @@ namespace Odary.Api.Migrations
                     country = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     timezone = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     logo_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    slug = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
@@ -66,6 +72,77 @@ namespace Odary.Api.Migrations
                         principalTable: "roles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "inventory_items",
+                columns: table => new
+                {
+                    id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    tenant_id = table.Column<string>(type: "character varying(50)", nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    category = table.Column<string>(type: "text", nullable: false),
+                    unit_type = table.Column<string>(type: "text", nullable: false),
+                    unit_size = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    quantity = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    min_threshold = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    expiry_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    batch_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_inventory_items", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_inventory_items_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "patients",
+                columns: table => new
+                {
+                    id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    tenant_id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    first_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    last_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    date_of_birth = table.Column<DateOnly>(type: "date", nullable: false),
+                    gender = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    phone_number = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    street = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    city = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    zip_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    country = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    insurance_provider = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    insurance_policy_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    allergies = table.Column<string[]>(type: "text[]", nullable: false),
+                    medical_conditions = table.Column<string[]>(type: "text[]", nullable: false),
+                    current_medications = table.Column<string[]>(type: "text[]", nullable: false),
+                    emergency_contact_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    emergency_contact_number = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    emergency_contact_relationship = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    notes = table.Column<string>(type: "text", nullable: true),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false),
+                    archived_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    archive_reason = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_patients", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_patients_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -107,7 +184,7 @@ namespace Odary.Api.Migrations
                     last_login_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     failed_login_attempts = table.Column<int>(type: "integer", nullable: false),
                     locked_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    password_history = table.Column<string>(type: "text", nullable: false),
+                    password_history = table.Column<List<string>>(type: "text[]", nullable: false),
                     user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     normalized_user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -288,6 +365,61 @@ namespace Odary.Api.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_category",
+                table: "inventory_items",
+                column: "category");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_expiry_date",
+                table: "inventory_items",
+                column: "expiry_date");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_is_archived",
+                table: "inventory_items",
+                column: "is_archived");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_name",
+                table: "inventory_items",
+                column: "name");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_name_category",
+                table: "inventory_items",
+                columns: new[] { "name", "category" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_inventory_items_tenant_id",
+                table: "inventory_items",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_patients_email",
+                table: "patients",
+                column: "email");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_patients_first_name_last_name",
+                table: "patients",
+                columns: new[] { "first_name", "last_name" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_patients_is_archived",
+                table: "patients",
+                column: "is_archived");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_patients_phone_number",
+                table: "patients",
+                column: "phone_number");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_patients_tenant_id",
+                table: "patients",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_expires_at",
                 table: "refresh_tokens",
                 column: "expires_at");
@@ -338,6 +470,12 @@ namespace Odary.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_tenants_slug",
+                table: "tenants",
+                column: "slug",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_claims_user_id",
                 table: "user_claims",
                 column: "user_id");
@@ -385,6 +523,12 @@ namespace Odary.Api.Migrations
         {
             migrationBuilder.DropTable(
                 name: "audit_logs");
+
+            migrationBuilder.DropTable(
+                name: "inventory_items");
+
+            migrationBuilder.DropTable(
+                name: "patients");
 
             migrationBuilder.DropTable(
                 name: "refresh_tokens");

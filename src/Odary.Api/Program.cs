@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Exceptions;
 using Odary.Api.Common.Services;
 using Odary.Api.Modules.Auth;
+using Odary.Api.Modules.Inventory;
 using Odary.Api.Modules.Patient;
 using Odary.Api.Modules.Tenant;
 using Odary.Api.Modules.User;
@@ -33,6 +34,7 @@ services.RegisterAuthorization(configuration);
 // Add modules
 services.AddAuthModule()
     .AddEmailModule(builder.Configuration)
+    .AddInventoryModule()
     .AddPatientModule()
     .AddTenantModule()
     .AddUserModule();
@@ -53,6 +55,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>()
 
 // Map module endpoints
 app.MapAuthEndpoints()
+    .MapInventoryEndpoints()
     .MapPatientEndpoints()
     .MapTenantEndpoints()
     .MapUserEndpoints();

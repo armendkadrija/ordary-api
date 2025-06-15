@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Odary.Api.Common.Services;
 using Odary.Api.Domain;
+using Odary.Api.Domain.Enums;
 
 namespace Odary.Api.Infrastructure.Database;
 
@@ -101,10 +102,15 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Patient> Patients { get; set; }
+    public DbSet<InventoryItem> InventoryItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure PostgreSQL enums
+        modelBuilder.HasPostgresEnum<InventoryCategory>();
+        modelBuilder.HasPostgresEnum<InventoryUnitType>();
 
         // Configure ASP.NET Identity table names to use clean snake_case
         modelBuilder.Entity<User>().ToTable("users");
@@ -203,8 +209,42 @@ public class OdaryDbContext : IdentityDbContext<User, Role, string>
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // PostgreSQL natively supports List<string> as text[] arrays
+            // PostgreSQL natively supports string[] as text[] arrays
             // No explicit configuration needed - EF Core + Npgsql handle this automatically!
+        });
+
+        modelBuilder.Entity<InventoryItem>(entity =>
+        {
+            // Indexes
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => new { e.Name, e.Category });
+            entity.HasIndex(e => e.IsArchived);
+            entity.HasIndex(e => e.ExpiryDate);
+
+            // Foreign key relationship with Tenant
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure enum properties to use PostgreSQL enums
+            entity.Property(e => e.Category)
+                .HasConversion<string>();
+            
+            entity.Property(e => e.UnitType)
+                .HasConversion<string>();
+
+            // Configure decimal precision for quantities
+            entity.Property(e => e.Quantity)
+                .HasPrecision(18, 4);
+            
+            entity.Property(e => e.MinThreshold)
+                .HasPrecision(18, 4);
+            
+            entity.Property(e => e.UnitSize)
+                .HasPrecision(18, 4);
         });
     }
 }

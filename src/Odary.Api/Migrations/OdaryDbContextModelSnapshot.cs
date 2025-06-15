@@ -21,6 +21,8 @@ namespace Odary.Api.Migrations
                 .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "inventory_category", new[] { "composite", "gic", "anesthetic", "impression", "cement", "endodontic", "periodontal", "orthodontic", "prosthetic", "surgical", "preventive", "whitening", "adhesive", "consumables", "equipment", "other" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "inventory_unit_type", new[] { "syringe", "carpule", "gram", "milliliter", "piece", "tube", "bottle", "pack", "roll", "sheet", "capsule", "tip", "needle", "blade", "file", "bur", "other" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -226,6 +228,94 @@ namespace Odary.Api.Migrations
                         .HasDatabaseName("ix_audit_logs_entity_type_entity_id");
 
                     b.ToTable("audit_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Odary.Api.Domain.InventoryItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BatchNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("batch_number");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<decimal>("MinThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("min_threshold");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("UnitSize")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("unit_size");
+
+                    b.Property<string>("UnitType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("unit_type");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_items");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_inventory_items_category");
+
+                    b.HasIndex("ExpiryDate")
+                        .HasDatabaseName("ix_inventory_items_expiry_date");
+
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("ix_inventory_items_is_archived");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("ix_inventory_items_name");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_inventory_items_tenant_id");
+
+                    b.HasIndex("Name", "Category")
+                        .HasDatabaseName("ix_inventory_items_name_category");
+
+                    b.ToTable("inventory_items", (string)null);
                 });
 
             modelBuilder.Entity("Odary.Api.Domain.Patient", b =>
@@ -823,6 +913,18 @@ namespace Odary.Api.Migrations
                         .HasConstraintName("fk_audit_logs_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Odary.Api.Domain.InventoryItem", b =>
+                {
+                    b.HasOne("Odary.Api.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_items_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Odary.Api.Domain.Patient", b =>
